@@ -1,0 +1,93 @@
+[
+  {
+    "designer_id": "abhinav_mishra",
+    "validate_against_source_anchor": true,
+    "banned_if_not_in_anchor": ["zari", "dabka", "organza"],
+    "must_appear": ["mirror"],
+    "must_appear_when_present": {
+      "mirror": [
+        ["resham", "silk thread", "threadwork", "silk threads", "metallic thread", "embroidery"]
+      ]
+    },
+    "must_not_appear": ["polyester", "chiffon", "georgette"],
+    "expected_aesthetic": "Mirror Maximalism",
+    "primary_techniques": ["sheesha_mirror", "resham_thread"],
+    "primary_fabrics": ["velvet", "raw_silk_dupion", "chanderi_silk"]
+  },
+  {
+    "designer_id": "sabyasachi",
+    "must_not_appear": ["mirror work", "sequins", "gota"],
+    "must_appear_when_present": {
+      "zardozi": ["resham"]
+    },
+    "expected_aesthetic": "Heritage Couture",
+    "primary_techniques": ["zardozi_thread_gold", "resham_thread", "zari_flat"],
+    "primary_fabrics": ["katan_silk", "raw_silk_dupion", "georgette_silk", "tussar_silk"]
+  },
+  {
+    "designer_id": "injiri",
+    "must_not_appear": ["zardozi", "mirror work", "sequins", "sheesha"],
+    "must_appear": ["block_print"],
+    "expected_aesthetic": "Artisan Craft",
+    "primary_techniques": ["block_print_floral", "natural_dye"],
+    "primary_fabrics": ["handloom_cotton", "khadi_cotton", "cotton_muslin"]
+  },
+  {
+    "designer_id": "rimzim_dadu",
+    "must_not_appear": ["silk", "cotton", "velvet", "zardozi"],
+    "must_appear_in_candidates": true,
+    "expected_aesthetic": "Avant-Garde",
+    "primary_techniques": [],
+    "primary_fabrics": [],
+    "note": "All fabrics expected as new_fabric_candidates — wire weave not in DB"
+  },
+  {
+    "designer_id": "torani",
+    "must_not_appear": ["wire"],
+    "must_appear_when_present": {
+      "embroidery": [
+        ["thread", "threadwork", "threads", "silk thread", "cotton thread", "zari", "resham", "needlework", "stitch", "hand embroidery", "embroidery", "embroidered", "kantha", "phulkari", "aari", "dori"]
+      ]
+    },
+    "expected_aesthetic": "Folk Maximalist",
+    "primary_techniques": ["kantha_stitch", "phulkari", "kutch_mirror_thread"],
+    "primary_fabrics": ["handloom_cotton", "cotton_muslin", "khadi_cotton"]
+  },
+  {
+    "designer_id": "house_of_masaba",
+    "must_not_appear": ["zardozi", "sheesha", "resham", "wire"],
+    "must_appear": ["print"],
+    "expected_aesthetic": "Graphic Pop Indian",
+    "primary_techniques": ["digital_print", "screen_print", "block_print"],
+    "primary_fabrics": ["cotton_cambric", "georgette_silk", "poly_crepe", "viscose_rayon"]
+  },
+  {
+    "designer_id": "raw_mango",
+    "must_not_appear": ["sequins", "heavy_embellishment", "mirror work"],
+    "expected_aesthetic": "Handloom Minimal",
+    "primary_techniques": ["zari_flat", "woven_jacquard"],
+    "primary_fabrics": ["banarasi_silk", "chanderi_silk", "handloom_cotton"]
+  },
+  {
+    "designer_id": "anavila",
+    "must_not_appear": ["zardozi", "sequins", "mirror work", "sheesha"],
+    "must_appear": ["linen"],
+    "expected_aesthetic": "Handloom Minimal",
+    "primary_techniques": [],
+    "primary_fabrics": ["pure_linen", "linen_silk_blend", "handloom_cotton"]
+  },
+  {
+    "designer_id": "pero",
+    "must_not_appear": ["zardozi", "mirror work", "sheesha", "heavy_embellishment"],
+    "expected_aesthetic": "Folk Maximalist",
+    "primary_techniques": ["kantha_stitch", "block_print_floral"],
+    "primary_fabrics": ["handloom_cotton", "khadi_cotton", "cotton_muslin"]
+  },
+  {
+    "designer_id": "anita_dongre",
+    "must_not_appear": ["wire", "zardozi_heavy"],
+    "expected_aesthetic": "Festive Occasion",
+    "primary_techniques": ["resham_thread", "zari_flat", "gota_patti"],
+    "primary_fabrics": ["chanderi_silk", "georgette_silk", "raw_silk_dupion"]
+  }
+]

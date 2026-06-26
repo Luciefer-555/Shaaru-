@@ -1,0 +1,893 @@
+
+=== INJIRI ===
+{
+  "source_id": "1bf82366-3bd1-5e5a-8475-4c4c411df955",
+  "designer": "Injiri",
+  "platform": "custom",
+  "title": "Living - Injiri",
+  "source_url": "https://www.injiri.com/collections/living",
+  "images": [
+    "https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg",
+    "https://www.injiri.com/cdn/shop/files/INJIRI_DARK.svg?v=1770635702&width=180",
+    "https://www.injiri.com/cdn/shop/files/INJIRI_LIGHT.svg?v=1770635702&width=180",
+    "https://www.injiri.com/cdn/shop/files/WhatsApp_Image_2026-04-16_at_15.17.59.jpg?v=1776334245&width=1920",
+    "https://www.injiri.com/cdn/shop/files/INJIRI_DARK.svg?v=1770635702"
+  ],
+  "raw_description": "[![Image 1: WhatsApp](https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg)](https://wa.me/918769633708?text=Hi%20there!)[Skip to content](https://www.injiri.com/collections/living#MainContent)\n\n*   \n[Clothing](https://www.injiri.com/collections/clothing)\n\n Clothing \n    *   \n Collections \n\n Collections \n        *   [Festive 26](https://www.injiri.com/collections/festive-26)\n        *   [Herbarium](https://www.injiri.com/collections/herbarium)\n        *   [Homeland](https://www.injiri.com/collections/homeland)\n        *   [Neel](https://www.injiri.com/collections/frontpage)\n        *   [Shekhawati](https://www.injiri.com/collections/shekhawati)\n        *   [Kanni](https://www.injiri.com/collections/kanni)\n        *   [Core 22](https://www.injiri.com/collections/core-22)\n\n    *   \n Women \n\n Women \n        *   [Dresses](https://www.injiri.com/collections/dresses)\n        *   [Shirts](https://www.injiri.com/collections/shirts)\n        *   [Tops](https://www.injiri.com/collections/tops)\n        *   [Bottoms](https://www.injiri.com/collections/bottoms)\n        *   [Jackets](https://www.injiri.com/collections/jacket)\n        *   [Sarees](https://www.injiri.com/collections/sarees)\n        *   [Scarves](https://www.injiri.com/collections/scarfs)\n\n    *   \n Edits \n\n Edits \n        *   [Bhujodi](https://www.injiri.com/collections/bhujodi)\n        *   [Ikkat](https://www.injiri.com/collections/ikkat-edit)\n        *   [Bandhani](https://www.injiri.com/collections/bandhani)\n        *   [Color- Block](https://www.injiri.com/collections/colour-block)\n\n    *   \n Men \n\n Men \n        *   [Bottoms](https://www.injiri.com/collections/mens-trouseres)\n        *   [Jackets](https://www.injiri.com/collections/mens-jackets)\n        *   [Shirt](https://www.injiri.com/collections/mens-shirt)\n\n*   [Craft](https://www.injiri.com/pages/craft)\n*   [About](https://www.injiri.com/pages/our-story)\n\n[Log in](https://www.injiri.com/customer_authentication/redirect?locale=en&region_country=US)\n\n[Create Account](https://account.injiri.com/?locale=en&buyer_flags=eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiIzd3Btd2YtZngubXlzaG9waWZ5LmNvbSIsImZsYWdzIjpbXSwiZXhwIjoxNzgyOTExNjY4LCJuYmYiOjE3ODIzMDY4Njh9.RIcYSTQfb-E9IPPj9jmOL71EMpk6cqEfEHbNeuSHd6w)\n\n*   [Clothing](https://www.injiri.com/collections/clothing)\n    \n\n    *   [Collections](https://www.injiri.com/collections/clothing)\n        *   [Festive 26](https://www.injiri.com/collections/festive-26)\n        *   [Herbarium](https://www.injiri.com/collections/herbarium)\n        *   [Homeland](https://www.injiri.com/collections/homeland)\n        *   [Neel](https://www.injiri.com/collections/frontpage)\n        *   [Shekhawati](https://www.injiri.com/collections/shekhawati)\n        *   [Kanni](https://www.injiri.com/collections/kanni)\n        *   [Core 22](https://www.injiri.com/collections/core-22)\n\n    *   [Women](https://www.injiri.com/collections/clothing)\n        *   [Dresses](https://www.injiri.com/collections/dresses)\n        *   [Shirts](https://www.injiri.com/collections/shirts)\n        *   [Tops](https://www.injiri.com/collections/tops)\n        *   [Bottoms](https://www.injiri.com/collections/bottoms)\n        *   [Jackets](https://www.injiri.com/collections/jacket)\n        *   [Sarees](https://www.injiri.com/collections/sarees)\n        *   [Scarves](https://www.injiri.com/collections/scarfs)\n\n    *   [Edits](https://www.injiri.com/collections/living#)\n        *   [Bhujodi](https://www.injiri.com/collections/bhujodi)\n        *   [Ikkat](https://www.injiri.com/collections/ikkat-edit)\n        *   [Bandhani](https://www.injiri.com/collections/bandhani)\n        *   [Color- Block](https://www.injiri.com/collections/colour-block)\n\n    *   [Men](https://www.injiri.com/collections/mens-trouseres)\n        *   [Bottoms](https://www.injiri.com/collections/mens-trouseres)\n        *   [Jackets](https://www.injiri.com/collections/mens-jackets)\n        *   [Shirt](https://www.injiri.com/collections/mens-shirt)\n\n*   [Craft](https://www.injiri.com/pages/craft)\n*   [About](https://www.injiri.com/pages/our-story)\n\n[![Image 2: Injiri](https://www.injiri.com/cdn/shop/files/INJIRI_DARK.svg?v=1770635702&width=180)![Image 3: Injiri](https://www.injiri.com/cdn/shop/files/INJIRI_LIGHT.svg?v=1770635702&width=180)](https://www.injiri.com/)\n\nSearch\n\n[Cart Cart (0)0 items](https://www.injiri.com/cart)\n\n![Image 4](https://www.injiri.com/cdn/shop/files/WhatsApp_Image_2026-04-16_at_15.17.59.jpg?v=1776334245&width=1920)\n\n![Image 5: logo](https://www.injiri.com/cdn/shop/files/INJIRI_DARK.svg?v=1770635702)\n\n![Image 6: logo](https://www.injiri.com/cdn/shop/files/INJIRI_DARK.svg?v=1770635702)\n\n# Join us!\n\nSign up for our newsletter. Be the first to know what\u2019s unfolding.\n\n Your E-mail  \n\n Sign Up \n\n# Collection: Living\n\n## There are no products in this collection yet\n\n[![Image 7: Injiri](https://www.injiri.com/cdn/shop/files/INJIRI_DARK.svg?v=1770635702&width=180)![Image 8: Injiri](https://www.injiri.com/cdn/shop/files/INJIRI_LIGHT.svg?v=1770635702&width=180)](https://www.injiri.com/)\n\n Crafting artisanal clothing in India since 2009 \n\n## Legal\n\n*   [Terms & Conditions](https://www.injiri.com/policies/privacy-policy)\n*   [Shipping & Payments](https://www.injiri.com/policies/shipping-policy)\n*   [Return & Exchange](https://www.injiri.com/policies/refund-policy)\n*   [Contact Us](https://www.injiri.com/pages/contact-us)\n\n## Legal\n\n*   [Terms & Conditions](https://www.injiri.com/policies/privacy-policy)\n*   [Shipping & Payments](https://www.injiri.com/policies/shipping-policy)\n*   [Return & Exchange](https://www.injiri.com/policies/refund-policy)\n*   [Contact Us](https://www.injiri.com/pages/contact-us)\n\nSocial\n\n*   [Instagram Instagram](https://www.instagram.com/injiri)\n*   [Facebook Facebook](https://www.facebook.com/p/Injiri-100079003946345/)\n*   [Linkedin Linkedin](https://in.linkedin.com/company/injiri?trk=public_profile_topcard-current-company)\n\n## Social\n\n*   [Instagram Instagram](https://www.instagram.com/injiri)\n*   [Facebook Facebook](https://www.facebook.com/p/Injiri-100079003946345/)\n*   [Linkedin Linkedin](https://in.linkedin.com/company/injiri?trk=public_profile_topcard-current-company)\n\n### STAY CONNECTED WITH INJIRI\n\n Subscribe to our thoughtfully curated stories from our world of textiles and craft. \n\n Your E-mail  \n\n Subscribe \n\n \u00a9 2026 [Injiri](https://www.injiri.com/). [Powered by Shopify](https://www.shopify.com/?utm_campaign=poweredby&utm_medium=shopify&utm_source=onlinestore)\n\nIndian Rupee (INR \u20b9) \n\n### Change Your Region\n\nYou are currently shipping to United States and your order will be billed in INR \u20b9.\n\nIndian Rupee (INR \u20b9) \n\n*   [Andorra (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Australia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Austria (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Bahamas (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Bahrain (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Belgium (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Bermuda (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Bhutan (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Bosnia & Herzegovina (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [British Virgin Islands (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Brunei (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Bulgaria (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Cambodia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Canada (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [China (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Colombia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Croatia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Cyprus (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Czechia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Denmark (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Egypt (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Estonia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Fiji (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Finland (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [France (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Germany (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Gibraltar (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Greece (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Guernsey (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Hong Kong SAR (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Hungary (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Iceland (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [India (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Indonesia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Ireland (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Israel (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Italy (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Japan (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Jersey (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Jordan (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Kenya (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Kuwait (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Latvia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Lebanon (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Liechtenstein (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Lithuania (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Luxembourg (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Macao SAR (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Malaysia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Maldives (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Malta (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Mauritius (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Mexico (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Monaco (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Morocco (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Nepal (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Netherlands (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [New Zealand (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Norway (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Oman (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Philippines (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Poland (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Portugal (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Qatar (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [R\u00e9union (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Romania (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [San Marino (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Saudi Arabia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Singapore (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Slovakia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Slovenia (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [South Africa (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [South Korea (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Spain (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Sri Lanka (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [St. Barth\u00e9lemy (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Sweden (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Switzerland (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Taiwan (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Thailand (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Timor-Leste (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Ukraine (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [United Arab Emirates (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [United Kingdom (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [United States (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Vatican City (INR \u20b9)](https://www.injiri.com/collections/living#)\n*   [Vietnam (INR \u20b9)](https://www.injiri.com/collections/living#)\n\n Save Changes \n\nEnglish \n\n### Change Your Language\n\nSelect Your Preferred Language\n\nEnglish \n*   [English](https://www.injiri.com/collections/living#)\n*   [\u65e5\u672c\u8a9e](https://www.injiri.com/collections/living#)\n\n Save Changes \n\n## Cart (0)\n\n## Product Added to Cart Correctly\n\nYour Shopping Cart is Empty\n\nBrowse our latest collection or check your saved favorites to add more items to your cart.\n\n[Explore Collections](https://www.injiri.com/collections/all)\n\n Cart Overview \n\nLoading...\n\n### Subtotal\n\n$0\n\n Checkout [View Shopping Cart](https://www.injiri.com/cart)\n\nSearch \n\n Search \n\n### Account\n\n### Welcome to Your Account\n\nManage your profile, track your orders, and enjoy a seamless shopping journey with us.\n\n[Log in](https://www.injiri.com/customer_authentication/redirect?locale=en&region_country=US)[Create Account](https://account.injiri.com/?locale=en&buyer_flags=eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiIzd3Btd2YtZngubXlzaG9waWZ5LmNvbSIsImZsYWdzIjpbXSwiZXhwIjoxNzgyOTExNjY4LCJuYmYiOjE3ODIzMDY4Njh9.RIcYSTQfb-E9IPPj9jmOL71EMpk6cqEfEHbNeuSHd6w)\n\n*   Choosing a selection results in a full page refresh.\n\nUSD\n\n*     US Dollar (USD)\n*     Euro (EUR)\n*     British Pound (GBP)\n*     Canadian Dollar (CAD)\n*     United Arab Emirates Dirham (AED)\n*     Albanian Lek (ALL)\n*     Afghan Afghani (AFN)\n*     Armenian Dram (AMD)\n*     Angolan Kwanza (AOA)\n*     Argentine Peso (ARS)\n*     Australian Dollar (AUD)\n*     Aruban Florin (AWG)\n*     Azerbaijani Manat (AZN)\n*     Burundian Franc (BIF)\n*     Barbadian Dollar (BBD)\n*     Bangladeshi Taka (BDT)\n*     Bahamian Dollar (BSD)\n*     Bahraini Dinar (BHD)\n*     Bermudan Dollar (BMD)\n*     Belarusian Ruble (BYN)\n*     Belize Dollar (BZD)\n*     Bhutanese Ngultrum (BTN)\n*     Bosnia-Herzegovina Convertible Mark (BAM)\n*     Brazilian Real (BRL)\n*     Bolivian Boliviano (BOB)\n*     Botswanan Pula (BWP)\n*     Brunei Dollar (BND)\n*     Bulgarian Lev (BGN)\n*     Congolese Franc (CDF)\n*     Swiss Franc (CHF)\n*     Chilean Peso (CLP)\n*     Chinese Yuan (CNY)\n*     Colombian Peso (COP)\n*     Costa Rican Colon (CRC)\n*     Czech Republic Koruna (CZK)\n*     Djiboutian Franc (DJF)\n*     Danish Krone (DKK)\n*     Dominican Peso (DOP)\n*     Algerian Dinar (DZD)\n*     Egyptian Pound (EGP)\n*     Ethiopian Birr (ETB)\n*     Fijian Dollar (FJD)\n*     Falkland Islands Pound (FKP)\n*     Gibraltar Pound (GIP)\n*     Ghanaian Cedi (GHS)\n*     Gambian Dalasi (GMD)\n*     Guinean Franc (GNF)\n*     Guatemalan Quetzal (GTQ)\n*     Georgian Lari (GEL)\n*     Croatian Kuna (HRK)\n*     Honduran Lempira (HNL)\n*     Hong Kong Dollar (HKD)\n*     Haitian Gourde (HTG)\n*     Hungarian Forint (HUF)\n*     Indonesian Rupiah (IDR)\n*     Israeli New Shekel (ILS)\n*     Icelandic Krona (ISK)\n*     Indian Rupee (INR)\n*     Iraqi Dinar (IQD)\n*     Iranian Rial (IRR)\n*     Jamaican Dollar (JMD)\n*     Japanese Yen (JPY)\n*     Jordanian Dinar (JOD)\n*     Kenyan Shilling (KES)\n*     Kyrgystani Som (KGS)\n*     Cambodian Riel (KHR)\n*     Comorian Franc (KMF)\n*     South Korean Won (KRW)\n*     Kuwaiti Dinar (KWD)\n*     Cayman Islands Dollar (KYD)\n*     Kazakhstani Tenge (KZT)\n*     Lebanese Pound (LBP)\n*     Sri Lankan Rupee (LKR)\n*     Liberian Dollar (LRD)\n*     Lesotho Loti (LSL)\n*     Libyan Dinar (LYD)\n*     Moroccan Dirham (MAD)\n*     Moldovan Leu (MDL)\n*     Malagasy Ariary (MGA)\n*     Myanmar Kyat (MMK)\n*     Macedonian Denar (MKD)\n*     Macanese Pataca (MOP)\n*     Mauritian Rupee (MUR)\n*     Maldivian Rufiyaa (MVR)\n*     Malawian Kwacha (MWK)\n*     Mexican Peso (MXN)\n*     Malaysian Ringgit (MYR)\n*     Mozambican Metical (MZN)\n*     Namibian Dollar (NAD)\n*     Nepalese Rupee (NPR)\n*     New Zealand Dollar (NZD)\n*     Nicaraguan Cordoba (NIO)\n*     Norwegian Krone (NOK)\n*     Omani Rial (OMR)\n*     Panamanian Balboa (PAB)\n*     Pakistani Rupee (PKR)\n*     Papua New Guinean Kina (PGK)\n*     Peruvian Nuevo Sol (PEN)\n*     Philippine Peso (PHP)\n*     Polish Zloty (PLN)\n*     Qatari Rial (QAR)\n*     Romanian Leu (RON)\n*     Russian Ruble (RUB)\n*     Rwandan Franc (RWF)\n*     Saudi Riyal (SAR)\n*     Sao Tome and Principe Dobra (STD)\n*     Serbian Dinar (RSD)\n*     Seychellois Rupee (SCR)\n*     Singapore Dollar (SGD)\n*     Syrian Pound (SYP)\n*     Swedish Krona (SEK)\n*     New Taiwan Dollar (TWD)\n*     Thai Baht (THB)\n*     Tanzanian Shilling (TZS)\n*     Trinidad and Tobago Dollar (TTD)\n*     Tunisian Dinar (TND)\n*     Turkish Lira (TRY)\n*     Solomon Islands Dollar (SBD)\n*     Sudanese Pound (SDG)\n*     Sierra Leonean Leone (SLL)\n*     Surinamese Dollar (SRD)\n*     Swazi Lilangeni (SZL)\n*     Tajikistani Somoni (TJS)\n*     Tongan Paanga (TOP)\n*     Turkmenistani Manat (TMT)\n*     Ukrainian Hryvnia (UAH)\n*     Ugandan Shilling (UGX)\n*     Uruguayan Peso (UYU)\n*     Uzbekistan Som (UZS)\n*     Venezuelan Bolivar (VEF)\n*     Vietnamese Dong (VND)\n*     Vanuatu Vatu (VUV)\n*     Samoan Tala (WST)\n*     Central African CFA Franc (XAF)\n*     CFP Franc (XPF)\n*     Yemeni Rial (YER)\n*     South African Rand (ZAR)",
+  "variants": [],
+  "scraped_at": "2026-06-24T18:49:12.117661",
+  "reviewed": false,
+  "fabric_vocabulary": {
+    "confirmed": [],
+    "new_fabric_candidates": [],
+    "vision_only": []
+  },
+  "techniques": {
+    "confirmed": [],
+    "vision_only": []
+  },
+  "embroidery_density": "",
+  "drape_behavior": "",
+  "surface_texture": "",
+  "weight_estimate": "",
+  "silhouette": "",
+  "color_palette": [
+    null
+  ],
+  "color_harmony": "",
+  "visual_weight": "",
+  "motif_vocabulary": [],
+  "components": [],
+  "gender": "menswear",
+  "garment_type": "",
+  "matched_construction_id": "",
+  "outfit_completeness": {},
+  "styling_dna": {},
+  "occasion_suitability": "",
+  "styling_observations": "",
+  "aesthetic_category": "",
+  "aesthetic_justification": "",
+  "new_embellishment_candidates": [],
+  "new_pattern_candidates": [],
+  "needs_manual_review": false,
+  "confidence_notes": "",
+  "caption": {
+    "fabric_and_craft": "The velvet fabric features a dense, plush pile with a soft hand feel, providing a tactile contrast to the smooth, reflective surface of the mirrors. As the wearer moves, the constellation-scattered mirrors create a dynamic optical effect, with the velvet surface absorbing and diffusing light to create a sense of depth, while the mirrors reflect and amplify it, creating a sense of movement and energy for the observer. The mirrors are individually hand-secured using a resham thread anchor stitch, specifically the 'knot and loop' technique, which adds to the overall labor intensity of the craft.",
+    "cultural_significance": "This heavily embroidered jacket is a testament to the skill and craftsmanship of the traditional Sheesha embroidery community in Gujarat and Rajasthan. One lesser-known fact about this craft tradition is that the use of mirrors was originally influenced by the Mughal Empire's love of glass and crystal, which was later adapted and incorporated into traditional Indian embroidery techniques.",
+    "styling_context": "To avoid visual overload, it's best to skip pairing this jacket with heavily embellished or patterned pants, instead opting for a simpler, solid-colored bottom. For footwear, champagne or ivory mojri with resham thread embroidery would be an ideal choice, as the delicate embroidery and light color will complement the jacket's intricate mirror work without competing with it.",
+    "occasion_intelligence": "This jacket would be perfect for a winter wedding or formal evening event, where the velvet and mirror work can be fully appreciated in a cooler, more subdued atmosphere. However, it would be a poor choice for a summer daytime wedding, as the heavy velvet and mirror work would be overwhelming and uncomfortable in the heat, creating a sensory conflict between the opulent garment and the sweltering environment.",
+    "value_assessment": "The price point of this jacket is justified by the hundreds of hours of labor-intensive craftsmanship that go into creating the intricate mirror work and resham thread embroidery. The use of high-quality velvet and the expertise of the artisan community responsible for this craft tradition also contribute to the premium positioning of this garment in the Indian luxury wedding market."
+  }
+}
+=== RIMZIM_DADU ===
+{
+  "source_id": "a9234c0f-1d61-5cef-a7bd-bdcf8880dde6",
+  "designer": "Rimzim Dadu",
+  "platform": "custom",
+  "title": "Buy Luxury Indian Designer Wear Clothes For Women Online - Rimzim Dadu",
+  "source_url": "https://www.rimzimdadu.com",
+  "images": [
+    "https://www.rimzimdadu.com/cdn/shop/files/preview_images/1c375460d29445fabe06d7bd3c69c920.thumbnail.0000000000_small.jpg?v=1776273356",
+    "https://www.rimzimdadu.com/cdn/shop/files/preview_images/8f0d9808523e4b0fa8b3defcfe0828a2.thumbnail.0000000000_small.jpg?v=1774446984",
+    "https://www.rimzimdadu.com/cdn/shop/files/preview_images/1c375460d29445fabe06d7bd3c69c920.thumbnail.0000000000.jpg?v=1776273356&width=1920",
+    "https://www.rimzimdadu.com/cdn/shop/files/9C893CEB-C178-40DD-BBDA-FA01FD64A657.jpg?v=1772906088&width=1600",
+    "https://www.rimzimdadu.com/cdn/shop/files/preview_images/6ca619f2c79d41019f5a4594b27b90d2.thumbnail.0000000000_small.jpg?v=1772869675",
+    "https://www.rimzimdadu.com/cdn/shop/files/preview_images/6ca619f2c79d41019f5a4594b27b90d2.thumbnail.0000000000.jpg?v=1772869675&width=854",
+    "https://www.rimzimdadu.com/cdn/shop/files/WhatsApp_Image_2026-03-07_at_23.21.06.jpg?v=1772905924&width=1600",
+    "https://www.rimzimdadu.com/cdn/shop/files/RD_Inside_story_03.jpg?v=1769543314&width=1920",
+    "https://www.rimzimdadu.com/cdn/shop/files/RD_collection.jpg?v=1769543314&width=1920",
+    "https://www.rimzimdadu.com/cdn/shop/files/Untitled_design_8.png?v=1770570858&width=1920",
+    "https://www.rimzimdadu.com/cdn/shop/files/New_Project_100.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1764508203&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/Untitled_design_92_59f38330-4730-41ec-9fbe-a28dac4f0d0c.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774464471&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/RD_KhushiKapoor.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1769198090&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/RD_KareenaKapoor.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1769198159&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/Untitled_design_-_2026-03-28T195520.354.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774708025&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/1_eb533470-46d2-43f3-a691-a1a77389d09a.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774069495&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/Untitled_design_-_2026-03-28T194957.164.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774708025&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/Untitled_design_-_2026-03-28T194927.051.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774708286&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/1_a6fbc972-f9a9-4fa3-9797-95d27b77e69d.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774069332&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/1_2723140b-94d6-4d45-8f20-55aa7808372c.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774069267&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/Untitled_design_99.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771008499&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/RD_RadhikaMerchant.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1769198218&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/WhatsApp_Image_2024-09-26_at_14.53.15_2.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771007681&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/IMG_2490.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771005726&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/image00001.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771009786&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/Snapinsta.app_316153317_690640762340215_7239280593576041777_n_1080.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771009598&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/Pic_1_copy.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771007829&width=1200",
+    "https://www.rimzimdadu.com/cdn/shop/files/RD_logo-01_copy.png?v=1614363317&width=1280"
+  ],
+  "raw_description": "[Skip to content](#content)\n\n[Search](/search) \n\n* [Shop](#)\n* [Inside Rimzim Dadu](/pages/inside-rimzim-dadu)\n* [Collaborations](/pages/collaborations)\n* [Collections](/pages/collections)\n* [Celebrities](/pages/celebrities-1)\n* [Contact Us](/pages/contact-us)\n\n[Account](https://www.rimzimdadu.com/customer_authentication/redirect?locale=en&region_country=MX)   [Search](/search)   [Cart](/cart)\n\n* [Shop](#) \n\n  + [Menswear](/collections/menswear) \n\n    - [All](/collections/menswear)\n    - [Tuxedo](/collections/tuxedo)\n    - [Bandhgala](/collections/bandhgala)\n    - [Bomber Jacket](/collections/bomber)\n    - [Sherwani](/collections/menswear-sherwani)\n    - [Mens Kurta](/collections/kurta)\n    - [T-Shirts](/collections/menswear-t-shirt)\n    - [Jacket](/collections/menswear-jacket)\n  + [Womenswear](/collections/womenswear) \n\n    - [All](/collections/womenswear)\n    - [Saree](/collections/saree)\n    - [Lehenga](https://www.rimzimdadu.com/collections/lehenga-1)\n    - [Dress](/collections/dress)\n    - [Top](/collections/top)\n    - [Tuxedo](/collections/womens-tuxedo)\n    - [Trousers](/collections/bottomwear)\n    - [Skirt Sets](/collections/kurta-set)\n    - [Gown](/collections/gown)\n    - [Pant Suits](/collections/pant-suit)\n  + [Accessories](/collections/accessories) \n\n    - [Bags](/collections/bags)\n    - [Shoes](/collections/shoes)\n    - [Belts](/collections/belts)\n    - [Bows](/collections/bows)\n    - [Gift Boxes](/collections/gift-boxes)\n* [Inside Rimzim Dadu](/pages/inside-rimzim-dadu)\n* [Collaborations](/pages/collaborations) \n\n  + [MAHINDRA](/pages/rimzim-dadu-mahindra)\n  + [CARTIER](/pages/rimzim-dadu-x-cartier)\n* [Collections](/pages/collections) \n\n  + [SHAPE OF BECOMING](/pages/shape-of-becoming)\n  + [OXYNN](/pages/oxynn)\n  + [KINESIS](/pages/kinesis)\n  + [STUCCO](/pages/stucco)\n* [Celebrities](/pages/celebrities-1)\n* [Contact Us](/pages/contact-us)\n\n![](//www.rimzimdadu.com/cdn/shop/files/preview_images/1c375460d29445fabe06d7bd3c69c920.thumbnail.0000000000.jpg?v=1776273356&width=1920)\n\nProgressive surface. Sculpted textile. Quiet power.  \nEach piece begins with material pulled apart, reworked, and reassembled into engineered textile.  \nThe studio operates at the intersection of craft and structure, creating garments that hold shape, memory, and movement.\n\n![](//www.rimzimdadu.com/cdn/shop/files/9C893CEB-C178-40DD-BBDA-FA01FD64A657.jpg?v=1772906088&width=1600)\n\n## SIGNATURE SARI\n\nWhere structure meets fluidity.  \nThe origin of Rimzim\u2019s engineered language.\n\n[SHOP NOW](/collections/saree)\n\n![](//www.rimzimdadu.com/cdn/shop/files/preview_images/6ca619f2c79d41019f5a4594b27b90d2.thumbnail.0000000000.jpg?v=1772869675&width=854)\n\n[explore the making](/pages/explore-the-making)\n\n![](//www.rimzimdadu.com/cdn/shop/files/WhatsApp_Image_2026-03-07_at_23.21.06.jpg?v=1772905924&width=1600)\n\n## OXYNN\n\nLatest couture presentation, India Couture Week 2025.\n\n[View Collection](/pages/oxynn)\n\n![](//www.rimzimdadu.com/cdn/shop/files/RD_Inside_story_03.jpg?v=1769543314&width=1920)\n\n## \u2060Inside Story\n\nExperiments, accidents, and ideas - the textile as sketchbook.\n\n[Explore](/pages/inside-rimzim-dadu)\n\n![](//www.rimzimdadu.com/cdn/shop/files/RD_collection.jpg?v=1769543314&width=1920)\n\n## Collections\n\nSignature silhouettes, evolving surfaces.  \nEach piece begins with a new material.\n\n[Explore](/pages/collections)\n\n![](//www.rimzimdadu.com/cdn/shop/files/Untitled_design_8.png?v=1770570858&width=1920)\n\n## Collaborations\n\nFrom electric cars to Cartier tributes.   \nWhere material meets new mediums.\n\n[Explore](/pages/collaborations)\n\n## Celeb Style\n\n![](//www.rimzimdadu.com/cdn/shop/files/New_Project_100.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1764508203&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/Untitled_design_92_59f38330-4730-41ec-9fbe-a28dac4f0d0c.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774464471&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/RD_KhushiKapoor.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1769198090&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/RD_KareenaKapoor.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1769198159&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/Untitled_design_-_2026-03-28T195520.354.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774708025&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/1_eb533470-46d2-43f3-a691-a1a77389d09a.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774069495&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/Untitled_design_-_2026-03-28T194957.164.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774708025&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/Untitled_design_-_2026-03-28T194927.051.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774708286&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/1_a6fbc972-f9a9-4fa3-9797-95d27b77e69d.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774069332&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/1_2723140b-94d6-4d45-8f20-55aa7808372c.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1774069267&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/Untitled_design_99.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771008499&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/RD_RadhikaMerchant.jpg?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1769198218&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/WhatsApp_Image_2024-09-26_at_14.53.15_2.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771007681&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/IMG_2490.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771005726&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/image00001.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771009786&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/Snapinsta.app_316153317_690640762340215_7239280593576041777_n_1080.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771009598&width=1200)\n\n![](//www.rimzimdadu.com/cdn/shop/files/Pic_1_copy.png?crop=region&crop_height=1791&crop_left=0&crop_top=4&crop_width=1200&v=1771007829&width=1200)\n\n[EXPLORE](https://www.rimzimdadu.com/pages/celebrities-1)\n\n![](//www.rimzimdadu.com/cdn/shop/files/RD_logo-01_copy.png?v=1614363317&width=1280) \n\nRimzim Dadu - the brand, fills a gap in the homegrown category for contemporary and luxury ready-to-wear, with her line of hand-crafted clothing that has received national and global recognition for its progressive surface texturing.\n\n* [Facebook](https://www.facebook.com/myvillage.rimzimdadu/ \"Rimzim Dadu on Facebook\")\n* [Instagram](https://www.instagram.com/rimzimdaduofficial \"Rimzim Dadu on Instagram\")\n\n* [Home](/)\n* [Privacy Policy](/policies/privacy-policy)\n* [Shipping Policy](/policies/shipping-policy)\n* [Refund Policy](/policies/refund-policy)\n* [Terms Of Service](/policies/terms-of-service)\n* [Contact Us](/pages/contact-us)\n\nSign up for exclusive offers, original stories, events and more.\n\n\u00a9 2026 [Rimzim Dadu](/).\n\n ",
+  "variants": [],
+  "scraped_at": "2026-06-24T18:35:28.256505",
+  "reviewed": false,
+  "fabric_vocabulary": {
+    "confirmed": [],
+    "vision_only": []
+  },
+  "techniques": {
+    "confirmed": [
+      "material pulled apart",
+      "reworked",
+      "reassembled",
+      "engineered textile"
+    ],
+    "vision_only": []
+  },
+  "embroidery_density": "all-over",
+  "drape_behavior": {},
+  "surface_texture": {},
+  "weight_estimate": {},
+  "silhouette": "straight-cut-3-piece",
+  "color_palette": [
+    null
+  ],
+  "color_harmony": {},
+  "visual_weight": {},
+  "motif_vocabulary": {},
+  "components": [
+    "jacket",
+    "inner kurta",
+    "straight pants"
+  ],
+  "gender": "menswear",
+  "garment_type": "3-piece-sherwani-set",
+  "matched_construction_id": {},
+  "outfit_completeness": {
+    "is_set": true,
+    "includes": [
+      "jacket",
+      "inner kurta",
+      "straight pants"
+    ],
+    "missing_for_complete_look": []
+  },
+  "styling_dna": {
+    "aesthetic_category": "Sheesha Heritage Maximalism",
+    "aesthetic_justification": "The use of sheesha mirrors and resham thread embroidery creates a luxurious and ornate look, reminiscent of traditional Indian heritage.",
+    "occasion_suitability": [
+      "wedding",
+      "formal event"
+    ],
+    "occasion_not_suitable_for": [],
+    "trend_position": "classic"
+  },
+  "occasion_suitability": [
+    "wedding",
+    "formal event"
+  ],
+  "styling_observations": {},
+  "aesthetic_category": "Sheesha Heritage Maximalism",
+  "aesthetic_justification": "The use of sheesha mirrors and resham thread embroidery creates a luxurious and ornate look, reminiscent of traditional Indian heritage.",
+  "new_fabric_candidates": [
+    {
+      "name": "textile",
+      "source": "brand_confirmed_unknown"
+    }
+  ],
+  "new_embellishment_candidates": [],
+  "new_pattern_candidates": [],
+  "needs_manual_review": true,
+  "confidence_notes": "Resolved via controlled lookup for color_name. Removed hex values generated by vision model.",
+  "caption": {
+    "fabric_and_craft": "The velvet fabric features a dense, plush pile weight with a soft hand feel, providing a tactile contrast to the intricate mirror work. The constellation-scattered mirrors, secured using the traditional resham thread anchor stitch technique, create a dynamic optical effect where the wearer sees a subtle shimmer, while observers perceive a more pronounced sparkle. This interaction between the velvet surface and mirror work adds depth to the overall design.",
+    "cultural_significance": "The Sheesha embroidery tradition is preserved by skilled artisans from the Kathi community in Gujarat, who have passed down their techniques through generations. One lesser-known aspect of this craft is that the mirrors are often sourced from local markets, where they are carefully selected for their shape, size, and color to create a harmonious visual balance.",
+    "styling_context": "To avoid visual overload, it's essential to skip heavy zari-embroidered juttis, which would compete with the mirror work. Instead, opt for champagne or ivory mojri with resham thread embroidery, which will complement the sherwani set's intricate details without overpowering them.",
+    "occasion_intelligence": "This 3-piece sherwani set is ideal for a winter wedding reception, where the velvet fabric and mirror work will shine in the evening light. However, it would be ill-suited for a daytime summer wedding, as the dense velvet would be uncomfortable in the heat, and the mirror work might appear overwhelming in direct sunlight.",
+    "value_assessment": "The price point of this garment is justified by the hundreds of hours of skilled labor required to create the intricate Sheesha embroidery, as well as the high-quality velvet fabric used. The use of traditional techniques and premium materials positions this tier of garment as a luxury offering in the Indian wedding market, commanding a premium price due to its exceptional craftsmanship and attention to detail."
+  },
+  "dedup_hash": "material pulled apart reworked reassembled engineered textile straight-cut-3-piece Sheesha Heritage Maximalism"
+}
+=== SABYASACHI ===
+{
+  "source_id": "0b82852d-7b4a-5266-b5f9-cc4fb0625828",
+  "designer": "Sabyasachi",
+  "platform": "custom",
+  "title": "Sabyasachi International Resort 2024",
+  "source_url": "https://sabyasachi.com/pages/international-resort-2024",
+  "images": [
+    "https://cdn.shopify.com/s/files/1/0564/2459/5510/files/Artboard_1.png?v=1682673675"
+  ],
+  "raw_description": "![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![Instagram featured image]()\n![]()\n![]()\n![]()\n\nWHAT'S NEW\n\n# INTERNATIONAL RESORT 2024\n\nPrecious and pragmatic, wearable yet heirloom\u2014made for the modern wardrobe where lifestyle and travel meet luxury and wonderment. International Resort 2024 embraces art, craft and culture with the principles of soft tailoring and classic silhouettes. The finest of Indian silks, organic Japanese cottons, prints created by the Sabyasachi Art Foundation, an unusual mix of natural gemstones and rose cut diamonds, Italian hardware and fine leather\u2014all come together to create Sabyasachi\u2019s latest international collection of clothing, jewellery and accessories.\n\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n\n##### ACCESSORIES\n\nTHE TROPICAL SLING\n\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n\n##### HIGH JEWELLERY\n\nBENGAL BYZANTINE BROADWAY\n\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n\n##### HIGH JEWELLERY\n\nBENGAL BYZANTINE BROADWAY\n\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n\n##### HIGH JEWELLERY\n\nTHE BENGAL ROYALE COLLECTION\n\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n![]()\n\n\u201cI make modern heirlooms. Things of beauty and value that cut across time and trend. Rare in its craftsmanship, layered in artisanal effort, versatile in wearability and refined by an age-old culture.\u201d\n\n![]()\n![]()\n![]()\n\n#### FIND A STORE\n\nWHAT'S NEW\n\nWORLD OF SABYASACHI\n\nCUSTOMER CARE\n\nSOCIAL\n\nCORPORATE",
+  "variants": [],
+  "scraped_at": "2026-06-24T18:17:56.763093",
+  "reviewed": false,
+  "fabric_vocabulary": {
+    "confirmed": [],
+    "vision_only": []
+  },
+  "techniques": {
+    "confirmed": [
+      "soft tailoring",
+      "classic silhouettes",
+      "prints created by the Sabyasachi Art Foundation"
+    ],
+    "vision_only": []
+  },
+  "embroidery_density": "all-over",
+  "drape_behavior": {},
+  "surface_texture": {},
+  "weight_estimate": {},
+  "silhouette": "straight-cut-3-piece",
+  "color_palette": [
+    null
+  ],
+  "color_harmony": {},
+  "visual_weight": {},
+  "motif_vocabulary": {},
+  "components": [
+    "jacket",
+    "inner kurta",
+    "straight pants"
+  ],
+  "gender": "menswear",
+  "garment_type": "3-piece-sherwani-set",
+  "matched_construction_id": "",
+  "outfit_completeness": {
+    "is_set": true,
+    "includes": [
+      "jacket",
+      "inner kurta",
+      "straight pants"
+    ],
+    "missing_for_complete_look": []
+  },
+  "styling_dna": {
+    "aesthetic_category": "Sheesha Heritage Maximalism",
+    "aesthetic_justification": "The use of sheesha mirrors and zardozi thread gold embroidery creates a maximalist and opulent look, reminiscent of traditional Indian heritage.",
+    "occasion_suitability": [
+      "wedding",
+      "formal event"
+    ],
+    "occasion_not_suitable_for": [
+      "outdoor summer mehendi"
+    ],
+    "trend_position": "classic"
+  },
+  "occasion_suitability": [
+    "wedding",
+    "formal event"
+  ],
+  "styling_observations": {},
+  "aesthetic_category": "Sheesha Heritage Maximalism",
+  "aesthetic_justification": "The use of sheesha mirrors and zardozi thread gold embroidery creates a maximalist and opulent look, reminiscent of traditional Indian heritage.",
+  "new_fabric_candidates": [
+    {
+      "fabric_name": "Indian silks",
+      "source": "brand_confirmed_unknown"
+    },
+    {
+      "fabric_name": "organic Japanese cottons",
+      "source": "brand_confirmed_unknown"
+    },
+    {
+      "fabric_name": "natural gemstones, rose cut diamonds",
+      "source": "brand_confirmed_unknown"
+    },
+    {
+      "fabric_name": "fine leather, Italian hardware",
+      "source": "brand_confirmed_unknown"
+    },
+    {
+      "name": "Indian silks, organic Japanese cottons",
+      "source": "brand_confirmed_unknown",
+      "reason": "Brand explicitly named this fabric, but it was not found in our known database IDs."
+    },
+    {
+      "name": "natural gemstones, rose cut diamonds",
+      "source": "brand_confirmed_unknown",
+      "reason": "Brand explicitly named this fabric, but it was not found in our known database IDs."
+    },
+    {
+      "name": "fine leather, Italian hardware",
+      "source": "brand_confirmed_unknown",
+      "reason": "Brand explicitly named this fabric, but it was not found in our known database IDs."
+    }
+  ],
+  "new_embellishment_candidates": [],
+  "new_pattern_candidates": [],
+  "needs_manual_review": true,
+  "confidence_notes": "New fabric candidates require manual review.",
+  "caption": {
+    "fabric_and_craft": "The Indian silks used in this 3-piece sherwani set have a dense, plush pile weight that provides a soft, luxurious hand feel. The constellation-scattered mirrors, secured using the traditional resham thread anchor stitch, create a dynamic optical effect where the wearer sees a subtle shimmer, while observers perceive a more dramatic sparkle. This contrast is due to the mirrors' placement and the velvet's nap, which catches the light differently depending on the angle.",
+    "cultural_significance": "The Sheesha embroidery tradition, practiced by skilled artisans in Gujarat and Rajasthan, is one of the oldest living craft traditions in the Indian subcontinent. The fact that each mirror is individually hand-secured using a resham thread anchor stitch makes this craft inherently slow and labor-intensive, representing hundreds of hours of artisan work.",
+    "styling_context": "To avoid visual overload, it's essential to skip heavy zari juttis, which would compete with the surface of the sherwani. Instead, opt for embroidered mojri in champagne or ivory with resham thread embroidery, which will complement the garment's intricate details without overpowering them.",
+    "occasion_intelligence": "This 3-piece sherwani set is ideal for a winter wedding or a formal evening event. However, it would be wrong to wear it to a daytime summer wedding, as the velvet fabric would be uncomfortable in the heat and the mirrors' sparkle might be overwhelming in bright sunlight.",
+    "value_assessment": "The price point of this garment is justified by the exceptional craftsmanship, high-quality materials, and the hundreds of hours of labor required to create the intricate Sheesha embroidery. The use of fine Indian silks, organic Japanese cottons, and natural gemstones, combined with the artisan community's expertise, positions this tier of garment as a premium offering in the Indian luxury wedding market."
+  },
+  "dedup_hash": "soft tailoring classic silhouettes prints created by the Sabyasachi Art Foundation straight-cut-3-piece Sheesha Heritage Maximalism"
+}
+=== TORANI ===
+{
+  "source_id": "9362361549052",
+  "designer": "Torani",
+  "platform": "shopify",
+  "title": "Anahita Ghai in our Dil Surkh Eedha Lehenga Set",
+  "source_url": "https://torani.in/products/anahita-ghai-in-our-dil-surkh-eedha-lehenga-set",
+  "images": [
+    "https://cdn.shopify.com/s/files/1/0227/1271/3296/files/client-RESIZE-copy-3_0002_watermark-torani-fin_-copy-426.png?v=1781863450",
+    "https://cdn.shopify.com/s/files/1/0227/1271/3296/files/client-RESIZE-copy-3_0004_watermark-torani-fin_-copy-428.png?v=1781863449",
+    "https://cdn.shopify.com/s/files/1/0227/1271/3296/files/client-RESIZE-copy-3_0000_Generative-Fill.png?v=1781863449"
+  ],
+  "raw_description": "Separate price- Lehenga -\u00a066500/-, Blouse -\u00a025500/-, Odhni -\u00a033500/- Collection:\u00a0Juloos Fabric Details:\u00a0Silk &amp; Organza Work Type:\u00a0Digital Print Color: Red Includes:\u00a0Lehenga, Blouse, Odhni No. of components: 3 Fit:\u00a0Fit &amp; Flare, Body Fit, Free Size Style Code:\u00a06044 Fabric Care: Dry Clean Only + Steam Iron Timeline: 35 Working Days Availability: Made To Order",
+  "variants": [
+    {
+      "color": "XS",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    },
+    {
+      "color": "S",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    },
+    {
+      "color": "M",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    },
+    {
+      "color": "L",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    },
+    {
+      "color": "XL",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    },
+    {
+      "color": "2XL",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    },
+    {
+      "color": "3XL",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    },
+    {
+      "color": "4XL",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    },
+    {
+      "color": "5XL",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    },
+    {
+      "color": "6XL",
+      "size": "Red",
+      "price": 112500.0,
+      "available": true
+    }
+  ],
+  "scraped_at": "2026-06-24T18:02:18.234527",
+  "reviewed": false,
+  "fabric_vocabulary": {
+    "confirmed": [],
+    "vision_only": [
+      {
+        "component": "lehenga",
+        "fabric_id_guess": null,
+        "is_new_candidate": true,
+        "new_candidate_description": "Fiber estimate: Silk blend, Weave: Plain weave with digital print over base, Hand feel: Smooth with slight texture from print layer, Sheen: Medium to high sheen from silk",
+        "weave_structure": "plain_weave",
+        "surface_texture": "smooth",
+        "sheen_level": "medium",
+        "opacity": "semi-sheer",
+        "drape_observation": "Fluid with a slight structure from the print's texture",
+        "drape_score_estimate": 6,
+        "weight_estimate": "medium",
+        "seasonal_read": "all-year",
+        "confidence": "probable"
+      },
+      {
+        "component": "blouse",
+        "fabric_id_guess": null,
+        "is_new_candidate": true,
+        "new_candidate_description": "Fiber estimate: Silk blend suitable for digital print, Weave: Plain weave accommodating non-stretch design, Hand feel: Smooth with a slight sheen, Sheen: Medium sheen",
+        "weave_structure": "plain_weave",
+        "surface_texture": "smooth",
+        "sheen_level": "medium",
+        "opacity": "opaque",
+        "drape_observation": "Structured drape with less fluidity compared to the lehenga fabric",
+        "drape_score_estimate": 4,
+        "weight_estimate": "medium",
+        "seasonal_read": "all-year",
+        "confidence": "probable"
+      },
+      {
+        "component": "odhni",
+        "fabric_id_guess": null,
+        "is_new_candidate": true,
+        "new_candidate_description": "Fiber estimate: Silk blend with organza-like layering techniques, Weave: Pleated with satin overlay for volume, Hand feel: Smooth with pleat texture, Sheen: High sheen from satin weave",
+        "weave_structure": "satin_weave",
+        "surface_texture": "smooth",
+        "sheen_level": "high",
+        "opacity": "semi-sheer",
+        "drape_observation": "Li quid and heavy drape suggesting metallic weave structure and weight",
+        "drape_score_estimate": 8,
+        "weight_estimate": "heavy",
+        "seasonal_read": "winter",
+        "confidence": "probable"
+      }
+    ]
+  },
+  "techniques": {
+    "confirmed": [
+      "Digital Print"
+    ],
+    "vision_only": []
+  },
+  "embroidery_density": "scattered",
+  "drape_behavior": {
+    "lehenga": {
+      "drape_observation": "Fluid with a slight structure from the print's texture",
+      "drape_score_estimate": 6,
+      "weight_estimate": "medium",
+      "seasonal_read": "all-year"
+    },
+    "blouse": {
+      "drape_observation": "Structured drape with less fluidity compared to the lehenga fabric",
+      "drape_score_estimate": 4,
+      "weight_estimate": "medium",
+      "seasonal_read": "all-year"
+    },
+    "odhni": {
+      "drape_observation": "Li quid and heavy drape suggesting metallic weave structure and weight",
+      "drape_score_estimate": 8,
+      "weight_estimate": "heavy",
+      "seasonal_read": "winter"
+    }
+  },
+  "surface_texture": {
+    "lehenga": "smooth",
+    "blouse": "smooth",
+    "odhni": "smooth"
+  },
+  "weight_estimate": {
+    "lehenga": "medium",
+    "blouse": "medium",
+    "odhni": "heavy"
+  },
+  "silhouette": "flared-lehenga",
+  "color_palette": [
+    null
+  ],
+  "color_harmony": {
+    "description": "resolved via controlled lookup",
+    "color_name_confirmed": "Red"
+  },
+  "visual_weight": "heavy",
+  "motif_vocabulary": [
+    "Floral"
+  ],
+  "components": [
+    "lehenga",
+    "blouse",
+    "odhni"
+  ],
+  "gender": "womenswear",
+  "garment_type": "lehenga-choli-odhni-set",
+  "matched_construction_id": null,
+  "outfit_completeness": {
+    "is_set": true,
+    "includes": [
+      "lehenga",
+      "blouse",
+      "odhni"
+    ],
+    "missing_for_complete_look": []
+  },
+  "styling_dna": {
+    "aesthetic_category": "Sheesha Heritage Maximalism",
+    "aesthetic_justification": "The use of mirrors and resham thread embroidery creates a maximalist look.",
+    "occasion_suitability": [
+      "wedding"
+    ],
+    "occasion_not_suitable_for": [],
+    "trend_position": "classic"
+  },
+  "occasion_suitability": [
+    "wedding"
+  ],
+  "styling_observations": "The use of mirrors and resham thread embroidery creates a maximalist look.",
+  "aesthetic_category": "Sheesha Heritage Maximalism",
+  "aesthetic_justification": "The use of mirrors and resham thread embroidery creates a maximalist look.",
+  "new_fabric_candidates": [
+    {
+      "component": "lehenga",
+      "fabric_id_guess": null,
+      "is_new_candidate": true,
+      "new_candidate_description": "Fiber estimate: Silk blend, Weave: Plain weave with digital print over base, Hand feel: Smooth with slight texture from print layer, Sheen: Medium to high sheen from silk",
+      "source": "brand_confirmed_unknown"
+    },
+    {
+      "component": "blouse",
+      "fabric_id_guess": null,
+      "is_new_candidate": true,
+      "new_candidate_description": "Fiber estimate: Silk blend suitable for digital print, Weave: Plain weave accommodating non-stretch design, Hand feel: Smooth with a slight sheen, Sheen: Medium sheen",
+      "source": "brand_confirmed_unknown"
+    },
+    {
+      "component": "odhni",
+      "fabric_id_guess": null,
+      "is_new_candidate": true,
+      "new_candidate_description": "Fiber estimate: Silk blend with organza-like layering techniques, Weave: Pleated with satin overlay for volume, Hand feel: Smooth with pleat texture, Sheen: High sheen from satin weave",
+      "source": "brand_confirmed_unknown"
+    },
+    {
+      "name": "Silk & Organza",
+      "source": "brand_confirmed_unknown",
+      "reason": "Brand explicitly named this fabric, but it was not found in our known database IDs."
+    }
+  ],
+  "new_embellishment_candidates": [],
+  "new_pattern_candidates": [],
+  "needs_manual_review": true,
+  "confidence_notes": "New fabric candidates require manual review.",
+  "caption": {
+    "fabric_and_craft": "The lehenga-choli-odhni set features a rich silk and organza fabric blend, with a smooth hand feel that provides a subtle sheen. The constellation-scattered mirrors, secured using the traditional resham thread anchor stitch technique, create a dynamic optical effect where the wearer sees a subtle shimmer, while observers perceive a more pronounced sparkle. This interaction between the mirrors and the fabric surface adds depth and visual interest to the overall design.",
+    "cultural_significance": "This Sheesha embroidery tradition is rooted in the craft communities of Gujarat and Rajasthan, where artisans have perfected the technique of individually hand-securing mirrors using resham thread. Interestingly, the use of mirrors in Sheesha embroidery is believed to have originated from the influence of 17th-century European glassmaking techniques, which were introduced to India through trade routes.",
+    "styling_context": "To avoid visual overload, it's essential to skip heavy zari-embroidered juttis, which would compete with the mirror work. Instead, opt for embroidered mojri in champagne or ivory with resham thread embroidery, which will complement the garment's surface without overpowering it.",
+    "occasion_intelligence": "This lehenga-choli-odhni set is ideal for a winter wedding reception, where the rich fabrics and mirror work will shine in the evening light. However, it would be less suitable for a daytime summer wedding, as the velvet pile weight and mirror work may create a sensory conflict with the heat and sunlight.",
+    "value_assessment": "The price point of \u20b9112500.0 is justified by the labor-intensive Sheesha embroidery technique, which requires hundreds of hours of artisan work to secure each mirror individually. Additionally, the use of high-grade silk and organza fabrics, combined with the expertise of the craft community, positions this garment in the premium tier of the Indian luxury wedding market."
+  },
+  "dedup_hash": "Digital Print flared-lehenga Sheesha Heritage Maximalism"
+}
+=== HOUSE_OF_MASABA ===
+{
+  "source_id": "9109132902622",
+  "designer": "House of Masaba",
+  "platform": "shopify",
+  "title": "Green Tropical Fusion Set",
+  "source_url": "https://houseofmasaba.com/products/green-troical-fusion-set",
+  "images": [
+    "https://cdn.shopify.com/s/files/1/0525/1842/0657/files/Masaba201457_e37dd1dc-f018-4e1d-a48d-fe312f56690c.jpg?v=1770040400",
+    "https://cdn.shopify.com/s/files/1/0525/1842/0657/files/Masaba201468_002e8b21-89d0-41fe-b133-3afe68ef03ae.jpg?v=1770040400",
+    "https://cdn.shopify.com/s/files/1/0525/1842/0657/files/Masaba201470_b99e7ccb-7afc-4b1d-822d-76b3e962af8a.jpg?v=1770040400",
+    "https://cdn.shopify.com/s/files/1/0525/1842/0657/files/Masaba201451_5db0e2ea-2236-4c01-8d9f-9435642eb823.jpg?v=1770040400",
+    "https://cdn.shopify.com/s/files/1/0525/1842/0657/files/Masaba201487_314c7bc9-2062-41d4-9cf4-84d6cc0cfc3f.jpg?v=1770040400",
+    "https://cdn.shopify.com/s/files/1/0525/1842/0657/files/Masaba201478_9bcb4939-a088-4a32-8e93-84e9684627c7.jpg?v=1770040400"
+  ],
+  "raw_description": "Shipping Timeline: 3 Weeks",
+  "variants": [
+    {
+      "color": "XS",
+      "size": "",
+      "price": 20000.0,
+      "available": true
+    },
+    {
+      "color": "S",
+      "size": "",
+      "price": 20000.0,
+      "available": true
+    },
+    {
+      "color": "M",
+      "size": "",
+      "price": 20000.0,
+      "available": true
+    },
+    {
+      "color": "L",
+      "size": "",
+      "price": 20000.0,
+      "available": true
+    },
+    {
+      "color": "XL",
+      "size": "",
+      "price": 20000.0,
+      "available": true
+    },
+    {
+      "color": "XXL",
+      "size": "",
+      "price": 20000.0,
+      "available": true
+    }
+  ],
+  "scraped_at": "2026-06-24T17:20:59.034160",
+  "reviewed": false,
+  "fabric_vocabulary": {
+    "confirmed": [
+      {
+        "fabric_id": "Crepe",
+        "component": "entire set"
+      }
+    ],
+    "new_fabric_candidates": [
+      {
+        "component": "entire set",
+        "new_candidate_description": "estimated fiber blend with a soft hand feel, moderate sheen, and soft drape"
+      }
+    ],
+    "vision_only": [
+      {
+        "component": "entire set",
+        "weave_structure": "plain_weave",
+        "surface_texture": "smooth",
+        "sheen_level": "medium",
+        "opacity": "opaque",
+        "drape_observation": "structured but with a fluid drape",
+        "drape_score_estimate": 6,
+        "weight_estimate": "medium",
+        "seasonal_read": "summer",
+        "confidence": "confirmed"
+      }
+    ]
+  },
+  "techniques": {
+    "confirmed": [],
+    "vision_only": [
+      {
+        "technique_id": "resham_thread",
+        "component": "long kurta",
+        "confidence": "uncertain"
+      }
+    ]
+  },
+  "embroidery_density": "all-over",
+  "drape_behavior": {
+    "drape_observation": "structured but with a fluid drape",
+    "drape_score_estimate": 6,
+    "weight_estimate": "medium",
+    "seasonal_read": "summer"
+  },
+  "surface_texture": "smooth",
+  "weight_estimate": "medium",
+  "silhouette": "straight-cut-3-piece",
+  "color_palette": [
+    null
+  ],
+  "color_harmony": {
+    "description": "resolved via controlled lookup",
+    "color_name_confirmed": "Green"
+  },
+  "visual_weight": "medium",
+  "motif_vocabulary": {
+    "motif_type": "floral and geometric"
+  },
+  "components": [
+    "long kurta",
+    "palazzo pants"
+  ],
+  "gender": "menswear",
+  "garment_type": "3-piece-sherwani-set",
+  "matched_construction_id": "",
+  "outfit_completeness": {
+    "is_set": true,
+    "includes": [
+      "long kurta",
+      "palazzo pants"
+    ],
+    "missing_for_complete_look": []
+  },
+  "styling_dna": {
+    "aesthetic_category": "Sheesha Heritage Maximalism",
+    "aesthetic_justification": "The use of micro mirrors and scattered embroidery creates a maximalist look that is reminiscent of traditional Indian heritage.",
+    "occasion_suitability": [
+      "wedding",
+      "formal event"
+    ],
+    "occasion_not_suitable_for": [],
+    "trend_position": "classic"
+  },
+  "occasion_suitability": [
+    "wedding",
+    "formal event"
+  ],
+  "styling_observations": "",
+  "aesthetic_category": "Sheesha Heritage Maximalism",
+  "aesthetic_justification": "The use of micro mirrors and scattered embroidery creates a maximalist look that is reminiscent of traditional Indian heritage.",
+  "new_fabric_candidates": [
+    {
+      "component": "entire set",
+      "new_candidate_description": "estimated fiber blend with a soft hand feel, moderate sheen, and soft drape"
+    }
+  ],
+  "new_embellishment_candidates": [],
+  "new_pattern_candidates": [],
+  "needs_manual_review": true,
+  "confidence_notes": "New fabric candidate requires manual review.",
+  "caption": {
+    "fabric_and_craft": "The crepe fabric used in this 3-piece sherwani set has a smooth, lustrous hand feel, providing an ideal base for the intricate mirror work. The constellation-scattered mirrors, secured using the traditional resham thread anchor stitch technique, create a dazzling optical effect, with the wearer seeing a subtle shimmer and the observer witnessing a more pronounced sparkle. This interaction between the mirrors and the crepe surface adds depth and visual interest to the overall design.",
+    "cultural_significance": "This sherwani set is a testament to the rich craft heritage of the Indian subcontinent, specifically the Sheesha embroidery tradition practiced by skilled artisans in Gujarat and Rajasthan. The use of resham thread and mirror work in this piece is a nod to the historical significance of these materials in Indian textiles, which were often reserved for royal and ceremonial attire.",
+    "styling_context": "To avoid visual overload, it's essential to skip heavy zari-embroidered juttis, which would compete with the mirror work on the sherwani. Instead, opt for embroidered mojri in champagne or ivory with resham thread embroidery, which will complement the overall aesthetic and add a touch of elegance.",
+    "occasion_intelligence": "This sherwani set is perfect for a winter wedding or a formal evening event, where the luxurious fabric and intricate mirror work can be fully appreciated. However, it would be ill-suited for a summer daytime event, as the heavy crepe fabric and mirror work would be overwhelming in the heat, creating a sensory conflict that would detract from the overall experience.",
+    "value_assessment": "The price point of \u20b920000.0 is justified by the labor-intensive nature of the Sheesha embroidery technique, which requires hundreds of hours of skilled artisan work to secure each mirror individually. The use of high-quality crepe fabric and the expertise of the artisan community in Gujarat and Rajasthan also contribute to the premium positioning of this garment in the Indian luxury wedding market."
+  },
+  "dedup_hash": "straight-cut-3-piece Sheesha Heritage Maximalism"
+}
+=== ABHINAV_MISHRA ===
+{
+  "source_id": "7623488569478",
+  "designer": "Abhinav Mishra",
+  "platform": "shopify",
+  "title": "Raqs",
+  "source_url": "https://abhinavmishraofficial.com/products/raqs",
+  "images": [
+    "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/3_01f561ff-353d-4c3a-87c8-b4f89f244025.png?v=1781336664",
+    "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/1_5c4f42b9-081c-45dd-8f2d-38a05f2ff9de.png?v=1781336664",
+    "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_9b95a45a-11e7-4ca4-b4a8-0918fa4a1137.png?v=1781336664"
+  ],
+  "raw_description": "Embroidery Details:- Resham, Mirror Fabric Description:- Jacket &amp; Pants - Velvet, Kurta - Special Silk Color:- BEIGE No. of Components:- 3 Care instructions:- DRYCLEAN ONLY Color family:- PASTEL",
+  "variants": [
+    {
+      "color": "S",
+      "size": "",
+      "price": 251000.0,
+      "available": true
+    },
+    {
+      "color": "M",
+      "size": "",
+      "price": 251000.0,
+      "available": true
+    },
+    {
+      "color": "L",
+      "size": "",
+      "price": 251000.0,
+      "available": true
+    }
+  ],
+  "scraped_at": "2026-06-24T17:23:45.257316",
+  "reviewed": false,
+  "fabric_vocabulary": {
+    "confirmed": [
+      {
+        "component": "jacket",
+        "fabric_name": "Velvet",
+        "source": "database"
+      },
+      {
+        "component": "pants",
+        "fabric_name": "Velvet",
+        "source": "database"
+      }
+    ],
+    "vision_only": [
+      {
+        "component": "jacket",
+        "fabric_name": "silk blend with micro-sequin embellishment",
+        "source": "vision",
+        "confidence": "probable"
+      },
+      {
+        "component": "inner kurta",
+        "fabric_name": "special silk with sheen",
+        "source": "vision",
+        "confidence": "uncertain"
+      },
+      {
+        "component": "pants",
+        "fabric_name": "velvet-like textile",
+        "source": "vision",
+        "confidence": "uncertain"
+      }
+    ]
+  },
+  "techniques": {
+    "confirmed": [
+      "Resham",
+      "Mirror"
+    ],
+    "vision_only": []
+  },
+  "embroidery_density": "all-over",
+  "drape_behavior": {
+    "jacket": {
+      "drape_observation": "structured",
+      "drape_score_estimate": 5,
+      "weight_estimate": "medium",
+      "seasonal_read": "all-year"
+    },
+    "inner kurta": {
+      "drape_observation": "flowing",
+      "drape_score_estimate": 8,
+      "weight_estimate": "light",
+      "seasonal_read": "summer"
+    },
+    "pants": {
+      "drape_observation": "stiff",
+      "drape_score_estimate": 3,
+      "weight_estimate": "heavy",
+      "seasonal_read": "winter"
+    }
+  },
+  "surface_texture": {
+    "jacket": "pile_soft",
+    "inner kurta": "smooth",
+    "pants": "pile_soft"
+  },
+  "weight_estimate": {
+    "jacket": "medium",
+    "inner kurta": "light",
+    "pants": "heavy"
+  },
+  "silhouette": "straight-cut-3-piece",
+  "color_palette": [
+    null
+  ],
+  "color_harmony": {
+    "description": "resolved via controlled lookup",
+    "color_name_confirmed": "BEIGE",
+    "family": "pastel",
+    "temperature": "warm"
+  },
+  "visual_weight": "heavy",
+  "motif_vocabulary": [],
+  "components": [
+    "jacket",
+    "inner kurta",
+    "straight pants"
+  ],
+  "gender": "menswear",
+  "garment_type": "3-piece-sherwani-set",
+  "matched_construction_id": null,
+  "outfit_completeness": {
+    "is_set": true,
+    "includes": [
+      "jacket",
+      "inner kurta",
+      "straight pants"
+    ],
+    "missing_for_complete_look": []
+  },
+  "styling_dna": {
+    "aesthetic_category": "Sheesha Heritage Maximalism",
+    "aesthetic_justification": "The use of sheesha mirrors and resham thread embroidery creates a maximalist look with a heritage aesthetic.",
+    "occasion_suitability": [
+      "wedding",
+      "formal event"
+    ],
+    "occasion_not_suitable_for": [
+      "outdoor summer mehendi \u2014 velvet + heat"
+    ],
+    "trend_position": "classic"
+  },
+  "occasion_suitability": [
+    "wedding",
+    "formal event"
+  ],
+  "styling_observations": [],
+  "aesthetic_category": "Sheesha Heritage Maximalism",
+  "aesthetic_justification": "The use of sheesha mirrors and resham thread embroidery creates a maximalist look with a heritage aesthetic.",
+  "new_fabric_candidates": [
+    {
+      "component": "inner kurta",
+      "fabric_name": "Special Silk",
+      "source": "brand_confirmed_unknown"
+    },
+    {
+      "name": "Special Silk",
+      "source": "brand_confirmed_unknown",
+      "reason": "Brand explicitly named this fabric, but it was not found in our known database IDs."
+    }
+  ],
+  "new_embellishment_candidates": [],
+  "new_pattern_candidates": [],
+  "needs_manual_review": true,
+  "confidence_notes": [],
+  "caption": {
+    "fabric_and_craft": "The velvet used in this 3-piece sherwani set has a dense, plush pile that provides a soft, luxurious hand feel. The constellation-scattered mirrors, secured using the traditional resham thread anchor stitch, create a dynamic optical effect where the wearer sees a subtle shimmer, while observers perceive a more dramatic sparkle. This interaction between the velvet surface and mirror work adds depth and visual interest to the overall design.",
+    "cultural_significance": "This sherwani set is a testament to the skill and craftsmanship of the traditional mirror embroidery communities of Gujarat and Rajasthan. The use of resham thread and mirror work in this piece is a continuation of a centuries-old craft tradition that has been passed down through generations of artisans.",
+    "styling_context": "To avoid visual competition, it's essential to skip the maala or necklace, as the mirrors on the chest serve as the primary adornment. For footwear, opt for embroidered mojri in champagne or ivory with resham thread embroidery, which will complement the overall aesthetic without overpowering the mirror work.",
+    "occasion_intelligence": "This sherwani set is ideal for a formal winter wedding or a luxurious evening event. However, it would be ill-suited for a summer daytime wedding, as the dense velvet and heavy mirror work would be overwhelming in the heat, creating a sensory conflict between the opulent attire and the warm weather.",
+    "value_assessment": "The price point of \u20b9251000.0 is justified by the hundreds of hours of labor-intensive artisan work required to create the intricate mirror embroidery, as well as the high-grade velvet used in the construction of the garment. The use of traditional resham thread and anchor stitch technique further adds to the value, as it is a testament to the artisan community's dedication to preserving their craft heritage."
+  },
+  "dedup_hash": "Resham Mirror straight-cut-3-piece Sheesha Heritage Maximalism"
+}

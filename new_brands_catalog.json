@@ -1,0 +1,76 @@
+{
+  "indie_brands": [
+    {
+      "name": "Holy Headen",
+      "type": "indie_brand",
+      "search_url": "https://www.holyheaden.in/search?q={query}",
+      "website": "https://www.holyheaden.in",
+      "fabrics_specialty": ["organic cotton", "vegan leather", "embroidered fabrics"],
+      "color_palettes": ["deep reds", "blacks", "earth tones", "jewel tones"],
+      "aesthetics": ["Streetwear", "Dark Academia", "Editorial", "Luxury Streetwear"],
+      "texture_profile": ["heavy embroidery", "structured", "bold prints"],
+      "notes": "Mumbai-based homegrown streetwear brand. Visual art transformed into luxury apparel. Known for heavily embroidered jackets, boots, and statement pieces. 25,000+ orders shipped, 15+ artists styled.",
+      "source": "instagram_ad_screenshot"
+    },
+    {
+      "name": "Farak",
+      "type": "indie_brand",
+      "search_url": "https://www.farak.co/search?q={query}",
+      "website": "https://www.farak.co",
+      "fabrics_specialty": ["handwoven fabrics", "handspun cotton", "block-printed textiles", "heritage weaves"],
+      "color_palettes": ["vibrant", "earth tones", "heritage prints"],
+      "aesthetics": ["Streetwear", "Desi Core", "Heritage Craft", "Indian Streetwear"],
+      "texture_profile": ["hand-embroidered", "block-printed", "woven"],
+      "notes": "Jaipur-based, founded 2021. Urdu for 'difference'. Blends South Asian heritage craftsmanship (block printing, hand embroidery, weaving) with contemporary streetwear. Varsity jackets, bombers, hoodies. Cricket-meets-craft capsule collections.",
+      "source": "instagram_reel_screenshot"
+    },
+    {
+      "name": "Breakkin Even",
+      "type": "indie_brand",
+      "search_url": "https://breakkineven.com/search?q={query}",
+      "website": "https://breakkineven.com",
+      "fabrics_specialty": ["denim", "cotton", "sustainable fabrics"],
+      "color_palettes": ["monochrome", "neutrals", "washed tones"],
+      "aesthetics": ["Streetwear", "Experimental", "Sustainable Fashion", "Minimalist"],
+      "texture_profile": ["casual", "distressed", "structured"],
+      "notes": "Experimental and made-to-order sustainable streetwear brand. Built on sustainability — garments made to order to reduce waste. Known for denim jorts, hoodies, and statement pieces. Small-batch, indie.",
+      "source": "instagram_reel_screenshot"
+    },
+    {
+      "name": "Hermyne",
+      "type": "indie_brand",
+      "search_url": "https://hermyne.in/search?q={query}",
+      "website": "https://hermyne.in",
+      "fabrics_specialty": ["saree fabrics repurposed", "fusion textiles", "cotton", "embroidered fabrics"],
+      "color_palettes": ["pastels", "vibrant prints", "jewel tones", "neutrals"],
+      "aesthetics": ["Fusion Ethnic", "Indo-Western", "Feminine", "Festive"],
+      "texture_profile": ["flowing", "embellished", "soft"],
+      "notes": "Founded 2020, Surat. Reimagines saree and kurta fabrics into modern tops, shirts, and sets for fashion-forward gen. Website-only model (pulled from all e-commerce platforms). Kurta sets, anarkalis, farsi salwar suits, bralette tops.",
+      "source": "instagram_ad_screenshot"
+    },
+    {
+      "name": "Aiv Atelier",
+      "type": "indie_brand",
+      "search_url": "https://aivatelier.in/search?q={query}",
+      "website": "https://aivatelier.in",
+      "fabrics_specialty": ["banarsi brocade", "silk", "tissue", "fusion fabrics"],
+      "color_palettes": ["jewel tones", "gold", "pastels", "vibrant"],
+      "aesthetics": ["Banarsi Fusion", "Ethnic", "Festive", "Indo-Western"],
+      "texture_profile": ["brocade", "draped", "structured"],
+      "notes": "Banarsi fusion brand. Featured in '5 Brands for Banarsi Fusion Outfits' content. Specialises in banarsi brocade fusion — predraped sarees, gowns, coord sets, off-shoulder silhouettes blending traditional Banarasi weaves with contemporary cuts.",
+      "source": "instagram_post_screenshot"
+    },
+    {
+      "name": "Mahima Mahajan",
+      "type": "indie_brand",
+      "search_url": "https://www.mahimamahajan.in/search?q={query}",
+      "website": "https://www.mahimamahajan.in",
+      "fabrics_specialty": ["silk", "embroidered fabrics", "net", "georgette", "velvet"],
+      "color_palettes": ["jewel tones", "pastels", "earth tones", "deep hues"],
+      "aesthetics": ["Bridal", "Festive", "Old Money", "Ethnic", "Quiet Luxury"],
+      "texture_profile": ["heavily embroidered", "draped", "structured", "flowing"],
+      "notes": "Delhi-based designer label. 848K+ Instagram followers. Luxury bridal and festive wear — lehengas, anarkalis, sharara sets, sarees, gowns. Hyderabad, Mumbai and Delhi stores. Ready-to-ship and made-to-order. Known for signature collections like Mehfil, Fanah, Mahiya.",
+      "source": "instagram_profile_screenshot"
+    }
+  ]
+}

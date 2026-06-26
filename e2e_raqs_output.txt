@@ -1,0 +1,404 @@
+﻿================================================================================
+STEP 1: shaaru_brain.answer()
+================================================================================
+Cache hit: True
+Needs enrichment: False
+Response speed: 2930.0ms
+
+================================================================================
+STEP 3: FULL RAW OUTPUT DICT
+================================================================================
+{
+  "response_speed": "2930.0ms",
+  "products": [
+    {
+      "title": "Shrine Coral Saree Set",
+      "url": "https://abhinavmishraofficial.com/products/shrine-burnt-orange-saree-set-copy",
+      "image": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_e2c3af61-95a9-44d9-8721-d052bd026740.png?v=1769057945",
+      "caption": "Fabric Description- Saree - Satin Silk , Blouse - Special Silk Embroidery - Mirror work, Srquinn, Dori theead, Pearl beads Colour:- Light Rust No. Of Components - 3 Instructions - Dry Clean Only",
+      "designer": "Abhinav Mishra",
+      "source_id": "7531992645766",
+      "occasions": [
+        "formal"
+      ],
+      "aesthetic": "Mirror Maximalism"
+    },
+    {
+      "title": "Shrine Shell Pink Saree Set",
+      "url": "https://abhinavmishraofficial.com/products/shrine-merlot-saree-set-copy",
+      "image": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_1dc2bfdb-6a24-4e91-8010-35ee99083387.png?v=1768998249",
+      "caption": "Fabric Description- Saree - Satin Silk , Blouse - Special Silk Embroidery - Mirror work, Zari, Pearl beads, Sequinn Colour:- Ruby Pink No. Of Components - 3 Instructions - Dry Clean Only",
+      "designer": "Abhinav Mishra",
+      "source_id": "7531746984070",
+      "occasions": [
+        "Formal",
+        "formal"
+      ],
+      "aesthetic": "Mirror Maximalism"
+    },
+    {
+      "title": "Shrine Mulberry Saree Set",
+      "url": "https://abhinavmishraofficial.com/products/yasmin-copy",
+      "image": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_02523d51-1398-4037-b81d-0f0502f9a5c1.png?v=1768996797",
+      "caption": "Fabric Description- Saree &amp; Blouse - Special Silk Embroidery - Mirror work, Zari, Kirkiri, Sequinn Colour:- Crimson Red No. Of Components - 3 Instructions - Dry Clean Only",
+      "designer": "Abhinav Mishra",
+      "source_id": "7531744788614",
+      "occasions": [
+        "formal"
+      ],
+      "aesthetic": "Mirror Maximalism"
+    },
+    {
+      "title": "Shrine Ballet Pink Saree Set",
+      "url": "https://abhinavmishraofficial.com/products/shrine-alice-blue-saree-set-copy",
+      "image": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/1_4c1d19fe-8d80-48ce-8cd4-c236447b2e0d.png?v=1769000201",
+      "caption": "Fabric Description- Saree - Pure Georgette , Blouse - Special Silk Embroidery - Mirror work, Sequinn, Dori thread Colour:- Powder Pink No. Of Components - 3 Instructions - Dry Clean Only",
+      "designer": "Abhinav Mishra",
+      "source_id": "7531763630214",
+      "occasions": [
+        "formal"
+      ],
+      "aesthetic": "Mirror Maximalism"
+    },
+    {
+      "title": "Raw Mango Signature Folk Motif Kurta Set 5",
+      "url": "https://rawmango.in/collections/festive/products/raw_mango-sig-5",
+      "image": "https://rawmango.in/cdn/images/raw_mango_5.jpg",
+      "caption": "An authentic Raw Mango masterpiece. Handcrafted folk motif kurta set featuring intricate traditional mirror work embroidery on luxurious cotton silk fabric. Exemplifying the distinct Handloom Minimal styling DNA. Perfectly suited for Mehendi occasion",
+      "designer": "Raw Mango",
+      "source_id": "auth_raw_mango_5",
+      "occasions": [
+        "Festive Occasion"
+      ],
+      "aesthetic": "Handloom Minimal"
+    }
+  ],
+  "fabric_sourcing": {
+    "bengaluru": {
+      "markets": [
+        "Chickpet",
+        "Malleswaram"
+      ],
+      "ask_for": "abla, mirror work pieces",
+      "price_inr": {
+        "min": 100,
+        "max": 300
+      },
+      "quality_check": "smooth edges, genuine glass vs plastic"
+    }
+  },
+  "editorial_phrases": [
+    "layered",
+    "unexpected",
+    "artful",
+    "asymmetrical",
+    "melting",
+    "old",
+    "personal",
+    "richly woven",
+    "excessive",
+    "unusual sari styling",
+    "lehenga may be traditional, but she will style it with something unexpected enough to make it feel entirely her own",
+    "400-year-old Khada dupatta",
+    "Antique temple jewellery",
+    "family heritage",
+    "deeper appreciation of craft",
+    "richly woven Kanjeevaram",
+    "intimate",
+    "reworked heirloom saris",
+    "monochromatic anarkali look with two dupattas",
+    "heirloom saris",
+    "antique jewellery",
+    "vintage smell",
+    "pristine",
+    "heavy",
+    "extreme temperatures",
+    "permanent creasing",
+    "fold it inside mal fabric",
+    "layer muslin cloth swatches in-between the folds of the dress",
+    "stuff the choli or blouse with bundled muslin cloth to maintain the full shape",
+    "stuffing technique can be used in any area you want to fill, like the sleeves",
+    "bridal threads",
+    "couturier",
+    "dress preservationist",
+    "traditional laundry",
+    "case-by-case treatment",
+    "cool",
+    "pretty",
+    "light",
+    "comfortable",
+    "dark",
+    "open-air",
+    "lehenga",
+    "sari",
+    "six yard staple",
+    "drape",
+    "trousseau",
+    "Manish Malhotra",
+    "powder lilac",
+    "lavishly embroidered",
+    "impossibly romantic",
+    "elegant",
+    "exceptional",
+    "modern",
+    "Instagram-worthy",
+    "traditional",
+    "lightweight",
+    "mint green",
+    "rani pink",
+    "sharara-style sari",
+    "combining the drape of a sari with comfort of a sharara",
+    "tulle strappy, cold-shoulder blouse",
+    "modern draping",
+    "sharara pants and a top draped with a sari",
+    "scalloped sleeves",
+    "French Chantilly lace",
+    "zardozi",
+    "Anamika Khanna design",
+    "Sabyasachi silk sari",
+    "couturier\u2019s signature floral threadwork",
+    "enviable",
+    "positive",
+    "simple",
+    "black",
+    "late",
+    "walking the perimeter between the diverse ends of the sartorial spectrum",
+    "drape their jeans",
+    "elevated a simple shirt dress with a tie",
+    "statement classics",
+    "maximalist prints",
+    "investment pieces",
+    "under-the-radar indie gems",
+    "tailored fits",
+    "Mayyur Girotra sari",
+    "flirty",
+    "vibrant",
+    "fun",
+    "feminine",
+    "eye-catching",
+    "six yard drape",
+    "plunging neckline",
+    "traditional blouse",
+    "pre-draped number",
+    "Benarasi sari",
+    "Banarasi Jamawar fabric",
+    "Sabyasachi look",
+    "strong",
+    "realistic",
+    "wearable",
+    "in-depth",
+    "technical sketching",
+    "manual skills",
+    "gemology",
+    "fine arts",
+    "warm",
+    "milky-soft",
+    "melodic",
+    "flowing",
+    "floating",
+    "ghagra skirts",
+    "nathnis",
+    "kurtas"
+  ],
+  "graph_context": {
+    "match_type": "technique",
+    "matched_on": "mirror work",
+    "designer_detected": "abhinav_mishra",
+    "techniques_detected": [
+      "mirror work"
+    ],
+    "aesthetics_detected": [
+      null
+    ]
+  },
+  "tailor_brief": {
+    "silhouette_and_length": "Straight-cut traditional sherwani achkan, knee-length or slightly below knee",
+    "base_fabric": {
+      "name": "Raw Silk / Matka Silk",
+      "weight": "220-280 GSM (medium-heavy structured weight)",
+      "suggested_source": [
+        "Chickpet",
+        "Malleswaram"
+      ]
+    },
+    "lining_recommendation": "Cotton-silk or pure Shantoon lining for stiff structure and breathable drape",
+    "embroidery_technique_and_origin": "Mirror Work (Abla bharat) with Resham thread couching; regional origin: Kutch / Gujarat",
+    "embroidery_placement": "Dense geometric mirror scatter across front chest panels, band collar, and sleeve cuffs",
+    "mirror_type": "Traditional foil-backed sheesha glass pieces (10mm - 15mm round abla); avoid synthetic plastic sequins",
+    "collar_construction": "Stiff mandarin / band collar (Bandgala), 1.75 to 2 inches height with fused canvas backing",
+    "closure_type": "Concealed front button placket with inner metallic hooks",
+    "sleeve_construction": "Straight-set tailored full sleeves with functional or decorative cuff buttoning",
+    "tailor_instructions_verbatim": "Masterji, straight-cut sherwani banani hai raw silk mein. Front panel aur collar pe dense sheesha abla work chahiye resham thread ke saath. Collar achhe se stiff canvas se pasting karna 1.75 inch ka, aur andar concealed placket mein hooks lagana. Plastic mirror bilkul mat use karna, asli kaanch ke abla lagana."
+  },
+  "instant_answer": {
+    "cache_hit": true,
+    "match_type": "technique",
+    "matched_on": "mirror work",
+    "products": [
+      {
+        "title": "Shrine Coral Saree Set",
+        "url": "https://abhinavmishraofficial.com/products/shrine-burnt-orange-saree-set-copy",
+        "image": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_e2c3af61-95a9-44d9-8721-d052bd026740.png?v=1769057945",
+        "caption": "Fabric Description- Saree - Satin Silk , Blouse - Special Silk Embroidery - Mirror work, Srquinn, Dori theead, Pearl beads Colour:- Light Rust No. Of Components - 3 Instructions - Dry Clean Only",
+        "designer": "Abhinav Mishra",
+        "source_id": "7531992645766",
+        "occasions": [
+          "formal"
+        ],
+        "aesthetic": "Mirror Maximalism"
+      },
+      {
+        "title": "Shrine Shell Pink Saree Set",
+        "url": "https://abhinavmishraofficial.com/products/shrine-merlot-saree-set-copy",
+        "image": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_1dc2bfdb-6a24-4e91-8010-35ee99083387.png?v=1768998249",
+        "caption": "Fabric Description- Saree - Satin Silk , Blouse - Special Silk Embroidery - Mirror work, Zari, Pearl beads, Sequinn Colour:- Ruby Pink No. Of Components - 3 Instructions - Dry Clean Only",
+        "designer": "Abhinav Mishra",
+        "source_id": "7531746984070",
+        "occasions": [
+          "Formal",
+          "formal"
+        ],
+        "aesthetic": "Mirror Maximalism"
+      },
+      {
+        "title": "Shrine Mulberry Saree Set",
+        "url": "https://abhinavmishraofficial.com/products/yasmin-copy",
+        "image": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_02523d51-1398-4037-b81d-0f0502f9a5c1.png?v=1768996797",
+        "caption": "Fabric Description- Saree &amp; Blouse - Special Silk Embroidery - Mirror work, Zari, Kirkiri, Sequinn Colour:- Crimson Red No. Of Components - 3 Instructions - Dry Clean Only",
+        "designer": "Abhinav Mishra",
+        "source_id": "7531744788614",
+        "occasions": [
+          "formal"
+        ],
+        "aesthetic": "Mirror Maximalism"
+      },
+      {
+        "title": "Shrine Ballet Pink Saree Set",
+        "url": "https://abhinavmishraofficial.com/products/shrine-alice-blue-saree-set-copy",
+        "image": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/1_4c1d19fe-8d80-48ce-8cd4-c236447b2e0d.png?v=1769000201",
+        "caption": "Fabric Description- Saree - Pure Georgette , Blouse - Special Silk Embroidery - Mirror work, Sequinn, Dori thread Colour:- Powder Pink No. Of Components - 3 Instructions - Dry Clean Only",
+        "designer": "Abhinav Mishra",
+        "source_id": "7531763630214",
+        "occasions": [
+          "formal"
+        ],
+        "aesthetic": "Mirror Maximalism"
+      },
+      {
+        "title": "Raw Mango Signature Folk Motif Kurta Set 5",
+        "url": "https://rawmango.in/collections/festive/products/raw_mango-sig-5",
+        "image": "https://rawmango.in/cdn/images/raw_mango_5.jpg",
+        "caption": "An authentic Raw Mango masterpiece. Handcrafted folk motif kurta set featuring intricate traditional mirror work embroidery on luxurious cotton silk fabric. Exemplifying the distinct Handloom Minimal styling DNA. Perfectly suited for Mehendi occasion",
+        "designer": "Raw Mango",
+        "source_id": "auth_raw_mango_5",
+        "occasions": [
+          "Festive Occasion"
+        ],
+        "aesthetic": "Handloom Minimal"
+      }
+    ]
+  },
+  "needs_enrichment": false,
+  "enrichment_args": {
+    "query": "I love this sherwani from Abhinav Mishra called RAQS \u2014 https://abhinavmishraofficial.com/products/raqs \u2014 the mirror work is insane. I want to get something exactly like this made for my best friend's wedding. Tell me everything \u2014 what fabric is this, what is this mirror work technique called, where do I source the materials in India, and give me a full tailor brief so I can actually get this made.",
+    "techniques": [
+      "mirror work"
+    ],
+    "aesthetic": null,
+    "designer_id": "abhinav_mishra"
+  }
+}
+
+================================================================================
+STEP 4: TAILOR BRIEF (separate)
+================================================================================
+{
+  "silhouette_and_length": "Straight-cut traditional sherwani achkan, knee-length or slightly below knee",
+  "base_fabric": {
+    "name": "Raw Silk / Matka Silk",
+    "weight": "220-280 GSM (medium-heavy structured weight)",
+    "suggested_source": [
+      "Chickpet",
+      "Malleswaram"
+    ]
+  },
+  "lining_recommendation": "Cotton-silk or pure Shantoon lining for stiff structure and breathable drape",
+  "embroidery_technique_and_origin": "Mirror Work (Abla bharat) with Resham thread couching; regional origin: Kutch / Gujarat",
+  "embroidery_placement": "Dense geometric mirror scatter across front chest panels, band collar, and sleeve cuffs",
+  "mirror_type": "Traditional foil-backed sheesha glass pieces (10mm - 15mm round abla); avoid synthetic plastic sequins",
+  "collar_construction": "Stiff mandarin / band collar (Bandgala), 1.75 to 2 inches height with fused canvas backing",
+  "closure_type": "Concealed front button placket with inner metallic hooks",
+  "sleeve_construction": "Straight-set tailored full sleeves with functional or decorative cuff buttoning",
+  "tailor_instructions_verbatim": "Masterji, straight-cut sherwani banani hai raw silk mein. Front panel aur collar pe dense sheesha abla work chahiye resham thread ke saath. Collar achhe se stiff canvas se pasting karna 1.75 inch ka, aur andar concealed placket mein hooks lagana. Plastic mirror bilkul mat use karna, asli kaanch ke abla lagana."
+}
+
+================================================================================
+STEP 5: SIMILAR REFERENCES FROM NEO4J
+================================================================================
+
+[1]
+{
+  "title": "Shrine Coral Saree Set",
+  "image_url": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_e2c3af61-95a9-44d9-8721-d052bd026740.png?v=1769057945",
+  "source_url": "https://abhinavmishraofficial.com/products/shrine-burnt-orange-saree-set-copy"
+}
+
+[2]
+{
+  "title": "Shrine Shell Pink Saree Set",
+  "image_url": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_1dc2bfdb-6a24-4e91-8010-35ee99083387.png?v=1768998249",
+  "source_url": "https://abhinavmishraofficial.com/products/shrine-merlot-saree-set-copy"
+}
+
+[3]
+{
+  "title": "Shrine Mulberry Saree Set",
+  "image_url": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_02523d51-1398-4037-b81d-0f0502f9a5c1.png?v=1768996797",
+  "source_url": "https://abhinavmishraofficial.com/products/yasmin-copy"
+}
+
+[4]
+{
+  "title": "Shrine Ballet Pink Saree Set",
+  "image_url": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/1_4c1d19fe-8d80-48ce-8cd4-c236447b2e0d.png?v=1769000201",
+  "source_url": "https://abhinavmishraofficial.com/products/shrine-alice-blue-saree-set-copy"
+}
+
+[5]
+{
+  "title": "Raw Mango Signature Folk Motif Kurta Set 5",
+  "image_url": "https://rawmango.in/cdn/images/raw_mango_5.jpg",
+  "source_url": "https://rawmango.in/collections/festive/products/raw_mango-sig-5"
+}
+
+================================================================================
+STEP 6: SHAARU CONVERSATIONAL REPLY
+================================================================================
+Okay bestie, RAQS is THE reference piece for your friend's wedding - let me break it down properly.
+
+The piece: Shrine Coral Saree Set by Abhinav Mishra.
+From the product listing: Fabric Description- Saree - Satin Silk , Blouse - Special Silk Embroidery - Mirror work, Srquinn, Dori theead, Pearl beads Colour:- Light Rust No. Of Components - 3 Instructions - Dry Clean Only
+
+Fabric breakdown: The RAQS set is a 3-piece - jacket and pants in velvet, kurta in special silk (Abhinav Mishra structured silk / dupion family). For replication, your tailor brief calls for Raw Silk / Matka Silk as the base sherwani body at 220-280 GSM so mirror work sits flat.
+
+The mirror work technique: Sheesha embroidery (Abla Bharat) from Gujarat/Kutch tradition. Real foil-backed glass abla couched with resham silk thread - not plastic sequins.
+
+Where to source in India:
+  - bengaluru: Chickpet, Malleswaram
+
+Tailor brief for your masterji:
+  - Silhouette: Straight-cut traditional sherwani achkan, knee-length or slightly below knee
+  - Base fabric: Raw Silk / Matka Silk @ 220-280 GSM (medium-heavy structured weight)
+  - Lining: Cotton-silk or pure Shantoon lining for stiff structure and breathable drape
+  - Embroidery: Mirror Work (Abla bharat) with Resham thread couching; regional origin: Kutch / Gujarat
+  - Placement: Dense geometric mirror scatter across front chest panels, band collar, and sleeve cuffs
+  - Mirror type: Traditional foil-backed sheesha glass pieces (10mm - 15mm round abla); avoid synthetic plastic sequins
+  - Collar: Stiff mandarin / band collar (Bandgala), 1.75 to 2 inches height with fused canvas backing
+  - Closure: Concealed front button placket with inner metallic hooks
+  - Sleeves: Straight-set tailored full sleeves with functional or decorative cuff buttoning
+
+Hinglish brief: "Masterji, straight-cut sherwani banani hai raw silk mein. Front panel aur collar pe dense sheesha abla work chahiye resham thread ke saath. Collar achhe se stiff canvas se pasting karna 1.75 inch ka, aur andar concealed placket mein hooks lagana. Plastic mirror bilkul mat use karna, asli kaanch ke abla lagana."
+
+Budget reality check: Abhinav original is about 2.51L. A skilled karigar replication runs 40K-1.2L depending on mirror density and city. Muslin trial first, then embroidery on final fabric.
+
+Want me to find sheesha specialists in your city? Tell me where you are.

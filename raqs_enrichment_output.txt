@@ -1,0 +1,41 @@
+﻿Loaded 201 fabrics
+Loaded 22 embellishments
+Loaded 24 constructions
+Loaded 55 aesthetics from Neo4j
+RAW VISION MODEL TEXT RESPONSE: '**Garment Analysis**\n\n* **Garment Type**: Sherwani\n* **Tradition**: Indian\n* **Occasion**: Formal\n* **Gender Expression**: Masculine\n* **Silhouette**:\n\t+ **Overall Shape**: Straight\n\t+ **Fit**: Fitted\n\t+ **Length**: Knee-length\n\t+ **Hem Shape**: Straight\n* **Construction**:\n\t+ **Shoulder Type**: Natural shoulder\n\t+ **Chest Structure**: Structured\n\t+ **Lining**: Lined\n* **Front**:\n\t+ **Closure Type**: Button-front\n\t+ **Collar Style**: Mandarin collar\n\t+ **Neckline**: High neckline\n* **Sleeves**:\n\t+ **Sleeve Type**: Long sleeves\n\t+ **Sleeve Length**: Full-length\n\t+ **Cuff Style**: Button cuffs\n* **Fabric**:\n\t+ **Fiber Type**: Unknown\n\t+ **Weight**: Medium-weight\n\t+ **Primary Color**: Beige\n\t+ **Pattern Type**: Embroidered\n* **Embellishment**:\n\t+ **Type**: Sequins\n\t+ **Placement**: Front and sleeves\n* **Replication Complexity**: Intermediate\n* **Tailor Notes**: The garment features intricate embroidery and sequin embellishments, requiring careful attention to detail during replication.'
+[FAIL] analyze_garment_deep: Request timed out.
+COST: ~$0.02
+{
+  "source_id": "7623488569478",
+  "designer": "Abhinav Mishra",
+  "platform": "shopify",
+  "title": "Raqs",
+  "source_url": "https://abhinavmishraofficial.com/products/raqs",
+  "images": [
+    "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/3_01f561ff-353d-4c3a-87c8-b4f89f244025.png?v=1781336664",
+    "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/1_5c4f42b9-081c-45dd-8f2d-38a05f2ff9de.png?v=1781336664",
+    "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/2_9b95a45a-11e7-4ca4-b4a8-0918fa4a1137.png?v=1781336664"
+  ],
+  "image_url": "https://cdn.shopify.com/s/files/1/0117/9903/5970/files/3_01f561ff-353d-4c3a-87c8-b4f89f244025.png?v=1781336664",
+  "price": "",
+  "raw_description": "Embroidery Details :- Resham, Mirror \n  Fabric Description :- Jacket & Pants - Velvet, Kurta - Special Silk \n  Color :- BEIGE \n  No. of Components :- 3 \n  Care instructions :- DRYCLEAN ONLY \n  Color family :- PASTEL",
+  "variants": [],
+  "aesthetic_category": "Mirror Maximalism",
+  "caption": {
+    "text": "Embroidery Details :- Resham, Mirror \n  Fabric Description :- Jacket & Pants - Velvet, Kurta - Special Silk \n  Color :- BEIGE \n  No. of Components :- 3 \n  Care instructions :- DRYCLEAN ONLY \n  Color family :- PASTEL"
+  },
+  "techniques": {
+    "confirmed": [
+      "resham"
+    ]
+  },
+  "occasion_suitability": [
+    "Festive Occasion"
+  ],
+  "styling_dna": [
+    "Ethnic Wear"
+  ],
+  "scraped_at": "2026-06-26T12:13:53.667184",
+  "reviewed": false,
+  "quality_gate_passed": true
+}

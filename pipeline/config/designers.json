@@ -1,0 +1,92 @@
+[
+  {
+    "id": "abhinav_mishra",
+    "name": "Abhinav Mishra",
+    "url": "abhinavmishraofficial.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Mirror Maximalism",
+    "region": "Delhi",
+    "active": true
+  },
+  {
+    "id": "raw_mango",
+    "name": "Raw Mango",
+    "url": "rawmango.in",
+    "platform": "custom",
+    "aesthetic_hint": "Handloom Minimal",
+    "region": "Delhi",
+    "active": true
+  },
+  {
+    "id": "house_of_masaba",
+    "name": "House of Masaba",
+    "url": "houseofmasaba.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Graphic Pop Indian",
+    "region": "Mumbai",
+    "active": true
+  },
+  {
+    "id": "torani",
+    "name": "Torani",
+    "url": "torani.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Folk Maximalist",
+    "region": "Delhi",
+    "active": true
+  },
+  {
+    "id": "anavila",
+    "name": "Anavila",
+    "url": "anavila.in",
+    "platform": "custom",
+    "aesthetic_hint": "Handloom Minimal",
+    "region": "Mumbai",
+    "active": true
+  },
+  {
+    "id": "anita_dongre",
+    "name": "Anita Dongre",
+    "url": "anitadongre.com",
+    "platform": "custom",
+    "aesthetic_hint": "Festive Occasion",
+    "region": "Mumbai",
+    "active": true
+  },
+  {
+    "id": "sabyasachi",
+    "name": "Sabyasachi",
+    "url": "sabyasachi.com",
+    "platform": "custom",
+    "aesthetic_hint": "Heritage Couture",
+    "region": "Kolkata",
+    "active": true
+  },
+  {
+    "id": "pero",
+    "name": "Pero by Aneeth Arora",
+    "url": "pero.in",
+    "platform": "custom",
+    "aesthetic_hint": "Folk Maximalist",
+    "region": "Delhi",
+    "active": true
+  },
+  {
+    "id": "rimzim_dadu",
+    "name": "Rimzim Dadu",
+    "url": "rimzimdadu.com",
+    "platform": "custom",
+    "aesthetic_hint": "Avant-Garde",
+    "region": "Delhi",
+    "active": true
+  },
+  {
+    "id": "injiri",
+    "name": "Injiri",
+    "url": "injiri.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Artisan Craft",
+    "region": "Delhi",
+    "active": true
+  }
+]

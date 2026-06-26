@@ -1,0 +1,520 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { X, Loader2 } from "lucide-react";
+
+type BBox = { x: number; y: number; w: number; h: number };
+
+export type ScannedItem = {
+  id: string;
+  label: string;
+  description: string;
+  category: string;
+  color: string;
+  aesthetic: string;
+  bbox: BBox;
+  confidence: number;
+  pixel_boxes?: { id: string; xyxy: number[] }[];
+};
+
+// ── Surveillance canvas helpers ──────────────────────────────────
+
+const CAT_STYLES: Record<string, { color: string; label: string }> = {
+  top:       { color: "#39FF14", label: "TOP" },
+  bottom:    { color: "#E040FB", label: "BOTTOM" },
+  outerwear: { color: "#FF6D00", label: "OUTERWEAR" },
+  footwear:  { color: "#00E5FF", label: "FOOTWEAR" },
+  dress:     { color: "#FF4081", label: "DRESS" },
+  set:       { color: "#FF4081", label: "CO-ORD SET" },
+  accessory: { color: "#FFD700", label: "ACCESSORY" },
+};
+const _DEFAULT_STYLE = { color: "#A855F7", label: "GARMENT" };
+
+function catStyle(category: string) {
+  return CAT_STYLES[category?.toLowerCase()] ?? _DEFAULT_STYLE;
+}
+
+const _COLOR_HEX: Record<string, string> = {
+  black:"#111",white:"#f5f5f0",red:"#e53935",blue:"#1e88e5",
+  navy:"#1a237e",green:"#43a047",yellow:"#fdd835",orange:"#fb8c00",
+  pink:"#e91e63",purple:"#8e24aa",grey:"#757575",gray:"#757575",
+  brown:"#6d4c41",beige:"#d7ccc8",cream:"#fffde7",indigo:"#3949ab",
+  teal:"#00897b",ivory:"#fffff0",olive:"#827717",khaki:"#c0a060",
+  maroon:"#880e4f",coral:"#ff7043",mint:"#a5d6a7",lavender:"#ce93d8",
+  white:"#f5f5f5",
+};
+function toHex(colorName: string): string {
+  if (!colorName) return "#888";
+  if (colorName.startsWith("#")) return colorName;
+  return _COLOR_HEX[colorName.toLowerCase().split(/[\s-]/)[0]] ?? "#888";
+}
+
+function drawBrackets(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, color: string
+) {
+  const cx = Math.min(w * 0.18, 22);
+  const cy = Math.min(h * 0.18, 22);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineCap = "square";
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 6;
+  ([
+    [[x, y + cy], [x, y], [x + cx, y]],
+    [[x + w - cx, y], [x + w, y], [x + w, y + cy]],
+    [[x, y + h - cy], [x, y + h], [x + cx, y + h]],
+    [[x + w - cx, y + h], [x + w, y + h], [x + w, y + h - cy]],
+  ] as [number, number][][]).forEach(([[ax, ay], [bx, by], [ccx, ccy]]) => {
+    ctx.beginPath();
+    ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(ccx, ccy);
+    ctx.stroke();
+  });
+  ctx.shadowBlur = 0;
+}
+
+function drawScanLabel(
+  ctx: CanvasRenderingContext2D,
+  item: ScannedItem,
+  rendW: number,
+  rendH: number,
+  offX: number,
+  offY: number
+) {
+  const { color: c, label: catLabel } = catStyle(item.category);
+  const bx = offX + item.bbox.x * rendW;
+  const by = offY + item.bbox.y * rendH;
+  const bw = item.bbox.w * rendW;
+  const bh = item.bbox.h * rendH;
+  if (bw < 20 || bh < 20) return;
+
+  // Ghost box
+  ctx.strokeStyle = `${c}44`;
+  ctx.lineWidth = 1;
+  ctx.shadowBlur = 0;
+  ctx.strokeRect(bx, by, bw, bh);
+  drawBrackets(ctx, bx, by, bw, bh, c);
+
+  // Card sizing + positioning
+  const CW = 180, CH = 66, GAP = 10;
+  let cardX = bx + bw + GAP;
+  let cardY = by;
+  if (cardX + CW > cw - 4) cardX = bx - CW - GAP;
+  cardY = Math.max(4, Math.min(cardY, ch - CH - 4));
+
+  // Connector line
+  const lx0 = cardX < bx ? bx : bx + bw;
+  const ly0 = by + bh * 0.42;
+  const lx1 = cardX < bx ? cardX + CW : cardX;
+  const ly1 = cardY + CH * 0.42;
+  ctx.beginPath();
+  ctx.strokeStyle = `${c}55`;
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([3, 4]);
+  ctx.moveTo(lx0, ly0); ctx.lineTo(lx1, ly1);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Card background + border
+  ctx.fillStyle = "rgba(3,3,8,0.91)";
+  ctx.fillRect(cardX, cardY, CW, CH);
+  ctx.strokeStyle = `${c}44`;
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(cardX, cardY, CW, CH);
+
+  // Top color bar
+  ctx.fillStyle = c;
+  ctx.fillRect(cardX, cardY, CW, 2.5);
+
+  // Category label
+  ctx.fillStyle = c;
+  ctx.font = 'bold 8.5px "Courier New", Consolas, monospace';
+  ctx.fillText(`// ${catLabel}`, cardX + 7, cardY + 17);
+
+  // Description text (2 lines max)
+  const desc = (item.description || item.label || "").substring(0, 72);
+  ctx.fillStyle = "rgba(222,222,222,0.88)";
+  ctx.font = '7.5px "Courier New", Consolas, monospace';
+  const LINE = 28;
+  ctx.fillText(desc.substring(0, LINE), cardX + 7, cardY + 32);
+  if (desc.length > LINE) {
+    const l2 = desc.substring(LINE, LINE * 2) + (desc.length > LINE * 2 ? "…" : "");
+    ctx.fillText(l2, cardX + 7, cardY + 43);
+  }
+
+  // Color swatch
+  ctx.fillStyle = toHex(item.color);
+  ctx.fillRect(cardX + 7, cardY + 51, 9, 9);
+  ctx.strokeStyle = "rgba(255,255,255,0.15)";
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(cardX + 7, cardY + 51, 9, 9);
+
+  // Confidence
+  ctx.fillStyle = `${c}77`;
+  ctx.font = '6.5px "Courier New", monospace';
+  ctx.fillText(
+    `${Math.round(item.confidence * 100)}% ✓`,
+    cardX + CW - 50, cardY + 62
+  );
+}
+
+function drawHUDStatic(
+  ctx: CanvasRenderingContext2D,
+  w: number, h: number, count: number
+) {
+  ctx.fillStyle = "rgba(0,0,0,0.022)";
+  for (let i = 0; i < h; i += 4) ctx.fillRect(0, i, w, 1);
+
+  ctx.fillStyle = "rgba(0,0,0,0.70)";
+  ctx.fillRect(0, 0, w, 22);
+  ctx.fillStyle = "#39FF14";
+  ctx.font = 'bold 8px "Courier New", Consolas, monospace';
+  ctx.fillText("SHAARU_SCAN // RESULTS", 8, 14);
+  ctx.fillStyle = "rgba(57,255,20,0.6)";
+  ctx.fillText(new Date().toTimeString().substring(0, 8), w - 58, 14);
+
+  ctx.fillStyle = "rgba(0,0,0,0.70)";
+  ctx.fillRect(0, h - 20, w, 20);
+  ctx.fillStyle = "rgba(57,255,20,0.6)";
+  ctx.font = '7px "Courier New", Consolas, monospace';
+  ctx.fillText(`ITEMS DETECTED: ${count}`, 8, h - 7);
+  ctx.fillText("TAP ITEM TO ANALYZE →", w / 2 - 58, h - 7);
+
+  const S = 16;
+  ctx.strokeStyle = "rgba(57,255,20,0.32)";
+  ctx.lineWidth = 1.2;
+  ([
+    [[0, S + 22], [0, 22], [S, 22]],
+    [[w - S, 22], [w, 22], [w, S + 22]],
+    [[0, h - 20 - S], [0, h - 20], [S, h - 20]],
+    [[w - S, h - 20], [w, h - 20], [w, h - 20 - S]],
+  ] as number[][][]).forEach(([[ax, ay], [bx, by], [cx, cy]]) => {
+    ctx.beginPath();
+    ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy);
+    ctx.stroke();
+  });
+}
+// ── End canvas helpers ───────────────────────────────────────────
+
+interface CameraScannerProps {
+  onClose: () => void;
+  onItemSelected: (item: ScannedItem) => void;
+  userId: string;
+  onAnalysisComplete: (result: any) => void;
+}
+
+export function CameraScanner({
+  onClose,
+  onItemSelected,
+  userId,
+  onAnalysisComplete,
+}: CameraScannerProps) {
+  const [scanning, setScanning] = useState(false);
+  const [annotatedFrame, setAnnotatedFrame] = useState<string | null>(null);
+  const [detectedItems, setDetectedItems] = useState<ScannedItem[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [guidance, setGuidance] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Need to track the last captured base64 for analyze step
+  const lastCapturedB64 = useRef<string | null>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const resultImgRef = useRef<HTMLImageElement>(null);
+  const [capturedSrc, setCapturedSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initCamera = async () => {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: { ideal: "environment" }, 
+                   width: { ideal: 1280 }, height: { ideal: 720 } } 
+        });
+      } catch {
+        // fallback — any available camera (works on desktop)
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: true 
+        });
+      }
+      
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        try { await videoRef.current.play(); } catch {}
+      }
+    };
+
+    initCamera().catch((err) => {
+      console.error("Camera access error:", err);
+      setError("Camera access denied");
+    });
+
+    return () => {
+      // Cleanup stream tracks
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []); // Run only once
+
+  // Separate effect to handle unmount cleanup cleanly
+  useEffect(() => {
+    return () => {
+      setCameraStream((currentStream) => {
+        if (currentStream) {
+          currentStream.getTracks().forEach((track) => track.stop());
+        }
+        return null;
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!annotatedFrame || !detectedItems.length) return;
+    const img = resultImgRef.current;
+    const canvas = overlayRef.current;
+    if (!img || !canvas) return;
+
+    const draw = () => {
+      const cw = img.clientWidth;
+      const ch = img.clientHeight;
+      if (cw === 0 || ch === 0) return;
+
+      // Account for object-contain letterboxing
+      const natW = img.naturalWidth || cw;
+      const natH = img.naturalHeight || ch;
+      const scale = Math.min(cw / natW, ch / natH);
+      const rendW = natW * scale;
+      const rendH = natH * scale;
+      const offX = (cw - rendW) / 2;
+      const offY = (ch - rendH) / 2;
+
+      canvas.width = cw;
+      canvas.height = ch;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, cw, ch);
+      detectedItems.forEach((item) =>
+        drawScanLabel(ctx, item, rendW, rendH, offX, offY)
+      );
+      drawHUDStatic(ctx, cw, ch, detectedItems.length);
+    };
+
+    let rafId: number;
+    if (img.complete && img.naturalWidth > 0) {
+      rafId = requestAnimationFrame(draw);
+    } else {
+      img.onload = () => { rafId = requestAnimationFrame(draw); };
+    }
+    return () => {
+      cancelAnimationFrame(rafId);
+      img.onload = null;
+    };
+  }, [detectedItems, annotatedFrame]);
+
+  const handleCapture = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    setScanning(true);
+    setGuidance(null);
+    setError(null);
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      setScanning(false);
+      return;
+    }
+
+    canvas.width = 1280;
+    canvas.height = 720;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    const image_b64 = dataUrl.split(",")[1]; // strip data:image/jpeg;base64,
+    lastCapturedB64.current = image_b64;
+    setCapturedSrc(dataUrl);
+
+    try {
+      const response = await fetch("/api/cv/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_b64, user_id: userId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Scan failed");
+      }
+
+      if (data.frame_quality === "poor") {
+        setGuidance(data.guidance || "Poor quality frame, try again.");
+        setDetectedItems([]);
+        setAnnotatedFrame(null);
+      } else {
+        setAnnotatedFrame(data.annotated_frame_b64 || null);
+        setDetectedItems(data.items || []);
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during scan");
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleItemTap = async (item: ScannedItem) => {
+    if (!lastCapturedB64.current) return;
+
+    setAnalyzing(true);
+    try {
+      const response = await fetch("/api/cv/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_b64: lastCapturedB64.current,
+          item_id: item.id,
+          item_label: item.label,
+          user_id: userId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Analyze failed");
+      }
+
+      onItemSelected(item);
+      onAnalysisComplete(result);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "An error occurred during analysis");
+      setAnalyzing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#1A1A1A] text-gray-100">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between p-4 z-10">
+        <h1 className="text-sm font-bold tracking-[0.2em]">RILEY IS LOOKING</h1>
+        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      <div className="flex-1 relative flex flex-col items-center justify-center overflow-hidden">
+        {/* Hidden Canvas for capture */}
+        <canvas ref={canvasRef} className="hidden" />
+
+        {error ? (
+          <div className="flex flex-col items-center justify-center p-6 text-center">
+            <p className="text-red-400 mb-4">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                setScanning(false);
+              }}
+              className="px-6 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        ) : !annotatedFrame ? (
+          // LIVE VIDEO FEED
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {guidance && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <p className="bg-black/60 px-6 py-3 rounded-full text-white font-medium text-lg text-center mx-4">
+                  {guidance}
+                </p>
+              </div>
+            )}
+            <div className="absolute bottom-10 left-0 right-0 flex justify-center">
+              <button
+                onClick={handleCapture}
+                disabled={scanning}
+                className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#A855F7] to-purple-400 flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-purple-500/20"
+              >
+                {scanning ? <Loader2 className="w-8 h-8 animate-spin text-white" /> : <div className="w-16 h-16 rounded-full border-4 border-white" />}
+              </button>
+            </div>
+          </>
+        ) : (
+          // ANNOTATED RESULT
+          <div className="flex flex-col w-full h-full">
+            <div className="relative w-full max-h-[60vh] flex-shrink-0 bg-black flex items-center justify-center">
+              <img
+                ref={resultImgRef}
+                src={capturedSrc ?? ""}
+                alt="Captured frame"
+                className="max-w-full max-h-[60vh] object-contain block"
+              />
+              <canvas
+                ref={overlayRef}
+                className="absolute inset-0 w-full h-full pointer-events-none"
+              />
+              {analyzing && (
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center backdrop-blur-sm z-20">
+                  <Loader2 className="w-12 h-12 animate-spin text-[#A855F7] mb-4" />
+                  <p className="text-lg font-medium tracking-wide">Riley is reading this...</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+              {detectedItems.length === 0 && (
+                <p className="text-center text-gray-400 py-4">No items detected.</p>
+              )}
+              {detectedItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleItemTap(item)}
+                  disabled={analyzing}
+                  className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-left disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  <div>
+                    <p className="font-medium text-lg">{item.label}</p>
+                    <p className="text-sm text-gray-400 capitalize">{item.color} • {item.aesthetic}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-[#A855F7] bg-[#A855F7]/10 px-2 py-1 rounded-full">
+                      {Math.round(item.confidence * 100)}%
+                    </span>
+                  </div>
+                </button>
+              ))}
+              
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => {
+                    setAnnotatedFrame(null);
+                    setDetectedItems([]);
+                  }}
+                  disabled={analyzing}
+                  className="px-6 py-3 rounded-full border border-white/20 hover:bg-white/10 transition-colors font-medium"
+                >
+                  Scan Again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

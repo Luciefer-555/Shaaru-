@@ -1,0 +1,129 @@
+/* ─── Google Fonts ──────────────────────────────────────────────────────────── */
+/* NOTE: URL @import must come before @import "tailwindcss" in Tailwind v4.    */
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,300;0,400;0,500;0,700;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500;700&display=swap");
+@import "tailwindcss";
+
+/* ─── Design Tokens ──────────────────────────────────────────────────────────
+   Premium Dark Mode Aesthetic with Glassmorphism and Vibrant Gradients
+ ────────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Backgrounds: Deep Midnight Indigo */
+  --bg-dark: #07070b;
+  --surface-dark: #121218;
+  --surface-light-muted: #1a1a24;
+
+  /* Glassmorphism Variables */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.15);
+
+  /* Text */
+  --text-primary-dark: #f8f9fa;
+  --text-secondary-dark: #a1a1aa;
+
+  /* Accent: Vibrant Neon Crimson / Rose */
+  --shaaru-crimson: #ff1a40;
+  --shaaru-crimson-hover: #d61131;
+
+  /* Borders */
+  --border-dark: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Tailwind CSS v4 Theme Extension ───────────────────────────────────────── */
+@theme {
+  /* Colors */
+  --color-bg-dark: #07070b;
+  --color-surface-dark: #121218;
+  --color-surface-light-muted: #1a1a24;
+  --color-shaaru-crimson: #ff1a40;
+  --color-shaaru-crimson-hover: #d61131;
+  --color-text-primary-dark: #f8f9fa;
+  --color-text-secondary-dark: #a1a1aa;
+  --color-glass-bg: rgba(255, 255, 255, 0.08);
+  --color-glass-border: rgba(255, 255, 255, 0.15);
+
+  /* Fonts */
+  --font-playfair: "Playfair Display", serif;
+  --font-dm-sans: "DM Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary-dark);
+  font-family: "DM Sans", sans-serif;
+  min-height: 100vh;
+  /* Radial gradient for premium glowing background */
+  background: radial-gradient(circle at 50% 0%, #2a0a10 0%, #0f0a12 40%, var(--bg-dark) 100%);
+  background-attachment: fixed;
+}
+
+/* ─── Float Animation ───────────────────────────────────────────────────────── */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* ─── Dot Pulse Animation ────────────────────────────────────────────────────── */
+@keyframes pulse {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ─── Glow Animations ────────────────────────────────────────────────────────── */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 26, 64, 0.2), 0 0 20px rgba(255, 26, 64, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(255, 26, 64, 0.4), 0 0 30px rgba(255, 26, 64, 0.2);
+  }
+}
+
+/* ─── Selection ──────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(255, 26, 64, 0.3);
+  color: #ffffff;
+}
+
+/* ─── Scrollbar Styling ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 26, 64, 0.5);
+}
