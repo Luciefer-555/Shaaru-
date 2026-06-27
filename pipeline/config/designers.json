@@ -6,6 +6,7 @@
     "platform": "shopify",
     "aesthetic_hint": "Mirror Maximalism",
     "region": "Delhi",
+    "category": "indian_luxury_ethnic",
     "active": true
   },
   {
@@ -15,6 +16,7 @@
     "platform": "custom",
     "aesthetic_hint": "Handloom Minimal",
     "region": "Delhi",
+    "category": "indian_luxury_ethnic",
     "active": true
   },
   {
@@ -24,6 +26,7 @@
     "platform": "shopify",
     "aesthetic_hint": "Graphic Pop Indian",
     "region": "Mumbai",
+    "category": "indian_luxury_ethnic",
     "active": true
   },
   {
@@ -33,6 +36,7 @@
     "platform": "shopify",
     "aesthetic_hint": "Folk Maximalist",
     "region": "Delhi",
+    "category": "indian_luxury_ethnic",
     "active": true
   },
   {
@@ -42,6 +46,7 @@
     "platform": "custom",
     "aesthetic_hint": "Handloom Minimal",
     "region": "Mumbai",
+    "category": "indian_luxury_ethnic",
     "active": true
   },
   {
@@ -51,6 +56,7 @@
     "platform": "custom",
     "aesthetic_hint": "Festive Occasion",
     "region": "Mumbai",
+    "category": "indian_luxury_ethnic",
     "active": true
   },
   {
@@ -60,6 +66,7 @@
     "platform": "custom",
     "aesthetic_hint": "Heritage Couture",
     "region": "Kolkata",
+    "category": "indian_luxury_ethnic",
     "active": true
   },
   {
@@ -69,6 +76,7 @@
     "platform": "custom",
     "aesthetic_hint": "Folk Maximalist",
     "region": "Delhi",
+    "category": "indian_luxury_ethnic",
     "active": true
   },
   {
@@ -78,6 +86,7 @@
     "platform": "custom",
     "aesthetic_hint": "Avant-Garde",
     "region": "Delhi",
+    "category": "indian_luxury_ethnic",
     "active": true
   },
   {
@@ -87,6 +96,499 @@
     "platform": "shopify",
     "aesthetic_hint": "Artisan Craft",
     "region": "Delhi",
+    "category": "indian_luxury_ethnic",
+    "active": true
+  },
+  {
+    "id": "mitch_india",
+    "name": "Mitch India",
+    "url": "mitchindia.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Contemporary Indian Menswear",
+    "region": "Mumbai",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "bloni",
+    "name": "Bloni",
+    "url": "bloni.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Desi Avant-Garde",
+    "region": "Delhi",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "huemn",
+    "name": "Huemn",
+    "url": "huemn.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Indian Genderfluid",
+    "region": "Delhi",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "kardo",
+    "name": "Kardo",
+    "url": "kardo.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Craft Streetwear",
+    "region": "Delhi",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "norblacknorwhite",
+    "name": "NorBlackNorWhite",
+    "url": "norblacknorwhite.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Psychedelic Indian Print",
+    "region": "Delhi",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "papa_dont_preach",
+    "name": "Papa Don't Preach by Shubhika",
+    "url": "papadontpreach.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Quirky Maximalist",
+    "region": "Mumbai",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "firangi_yarn",
+    "name": "Firangi Yarn",
+    "url": "firangiyarn.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Ethno-Western Sustainable Menswear",
+    "region": "Mumbai",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "oje_living",
+    "name": "Oje",
+    "url": "ojeliving.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Contemporary Handcrafted Shirts",
+    "region": "Mumbai",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "stravage",
+    "name": "Stravage",
+    "url": "stravage.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Editorial Indian Menswear",
+    "region": "Delhi",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "untld_india",
+    "name": "UNTLD India",
+    "url": "untld.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Minimalist Indian Streetwear Denim",
+    "region": "Mumbai",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "brkthru",
+    "name": "Brkthru",
+    "url": "brkthru.store",
+    "platform": "shopify",
+    "aesthetic_hint": "Clean Basics Henley Tees",
+    "region": "Delhi",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "beeglee",
+    "name": "Beeglee",
+    "url": "beeglee.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Dark Feminine Clothing",
+    "region": "Delhi",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "roxylane",
+    "name": "Roxylane",
+    "url": "roxylane.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Premium Clean Fits Not Streetwear",
+    "region": "Mumbai",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "mynomad",
+    "name": "MyNomad",
+    "url": "mynomad.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Made In India Apparel",
+    "region": "Chandigarh",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "loudless",
+    "name": "LoudLess",
+    "url": "loudless.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Maximalist Prints Embroidery",
+    "region": "Mumbai",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "nishorama",
+    "name": "Nishorama",
+    "url": "nishorama.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Contemporary Indian Linen Drape",
+    "region": "Delhi",
+    "category": "contemporary_indian",
+    "active": true
+  },
+  {
+    "id": "sagacity",
+    "name": "Sagacity",
+    "url": "thesagacity.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Japanese Inspired Indian Streetwear",
+    "region": "Mumbai",
+    "category": "indian_streetwear",
+    "active": true
+  },
+  {
+    "id": "dfc",
+    "name": "DFC Days For Clothing",
+    "url": "daysforclothing.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Mumbai Graphic Streetwear",
+    "region": "Mumbai",
+    "category": "indian_streetwear",
+    "active": true
+  },
+  {
+    "id": "almost_gods",
+    "name": "Almost Gods",
+    "url": "almostgods.com",
+    "platform": "shopify",
+    "aesthetic_hint": "High Fashion Streetwear",
+    "region": "Mumbai",
+    "category": "indian_streetwear",
+    "active": true
+  },
+  {
+    "id": "biskit",
+    "name": "BISKIT",
+    "url": "biskit.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Limited Drop Genderless",
+    "region": "Chennai",
+    "category": "indian_streetwear",
+    "active": true
+  },
+  {
+    "id": "firvt",
+    "name": "FIRVT",
+    "url": "firvt.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Mumbai Streetwear Store",
+    "region": "Mumbai",
+    "category": "indian_streetwear",
+    "active": true
+  },
+  {
+    "id": "unsound_rags",
+    "name": "Unsound Rags",
+    "url": "unsoundrags.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Darkwear Band Tees Subculture",
+    "region": "Mumbai",
+    "category": "indian_streetwear",
+    "active": true
+  },
+  {
+    "id": "gaurav_gupta",
+    "name": "Gaurav Gupta",
+    "url": "gauravguptaofficial.com",
+    "platform": "custom",
+    "aesthetic_hint": "Sculptural Couture",
+    "region": "Delhi",
+    "category": "indian_luxury_couture",
+    "active": true
+  },
+  {
+    "id": "amit_aggarwal",
+    "name": "Amit Aggarwal",
+    "url": "amitaofficial.in",
+    "platform": "custom",
+    "aesthetic_hint": "Tech Futurist Couture",
+    "region": "Delhi",
+    "category": "indian_luxury_couture",
+    "active": true
+  },
+  {
+    "id": "tarun_tahiliani",
+    "name": "Tarun Tahiliani",
+    "url": "taruntahiliani.com",
+    "platform": "custom",
+    "aesthetic_hint": "Heritage Bridal Couture",
+    "region": "Delhi",
+    "category": "indian_luxury_couture",
+    "active": true
+  },
+  {
+    "id": "ikoho",
+    "name": "IKOHO",
+    "url": "ikoho.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Post Sneaker Era Fashion Footwear",
+    "region": "Mumbai",
+    "category": "indian_footwear",
+    "active": true
+  },
+  {
+    "id": "the_last_ape",
+    "name": "The Last Ape",
+    "url": "thelastape.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Sneakers Streetwear Tabi Shoes",
+    "region": "Chennai",
+    "category": "indian_footwear",
+    "active": true
+  },
+  {
+    "id": "comet",
+    "name": "Comet",
+    "url": "wearcomet.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Indian Sneaker Brand Star Logo",
+    "region": "Mumbai",
+    "category": "indian_footwear",
+    "active": true
+  },
+  {
+    "id": "gully_labs",
+    "name": "Gully Labs",
+    "url": "gullylabs.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Indian Handcrafted Shoes Streetwear",
+    "region": "Delhi",
+    "category": "indian_footwear",
+    "active": true
+  },
+  {
+    "id": "sicsense",
+    "name": "Sicsense",
+    "url": "sicsense.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Edgy Chain Accessories Keychains",
+    "region": "Mumbai",
+    "category": "indian_accessories",
+    "active": true
+  },
+  {
+    "id": "salty_alpha",
+    "name": "Salty Alpha",
+    "url": "salty.co.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Mens Jewellery Chains Rings",
+    "region": "Mumbai",
+    "category": "indian_accessories",
+    "active": true
+  },
+  {
+    "id": "miso_jewellery",
+    "name": "MISO Jewellery",
+    "url": "misobysonia.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Edgy Statement Jewellery",
+    "region": "Mumbai",
+    "category": "indian_accessories",
+    "active": true
+  },
+  {
+    "id": "anu_merton",
+    "name": "Anu Merton",
+    "url": "anumerton.com",
+    "platform": "custom",
+    "aesthetic_hint": "Handmade Indian Jewellery Apparel",
+    "region": "Mumbai",
+    "category": "indian_accessories",
+    "active": true
+  },
+  {
+    "id": "four_figr",
+    "name": "Four Figr",
+    "url": "fourfigr.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Urban Handmade Accessories Wallets",
+    "region": "Delhi",
+    "category": "indian_accessories",
+    "active": true
+  },
+  {
+    "id": "tora_tory",
+    "name": "Tora and Tory",
+    "url": "toratory.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Niche Fine Jewellery",
+    "region": "Mumbai",
+    "category": "indian_accessories",
+    "active": true
+  },
+  {
+    "id": "the_berry_babe",
+    "name": "Berry Babe",
+    "url": "theberrybabe.in",
+    "platform": "shopify",
+    "aesthetic_hint": "Leopard Print Scarves Accessories",
+    "region": "Mumbai",
+    "category": "indian_bags",
+    "active": true
+  },
+  {
+    "id": "theater",
+    "name": "Theater",
+    "url": "theater.xyz",
+    "platform": "shopify",
+    "aesthetic_hint": "Quirky Bags Shoes Accessories",
+    "region": "Mumbai",
+    "category": "indian_bags",
+    "active": true
+  },
+  {
+    "id": "nappa_dori",
+    "name": "Nappa Dori",
+    "url": "nappadori.com",
+    "platform": "custom",
+    "aesthetic_hint": "Structured Leather Bags Briefcases",
+    "region": "Delhi",
+    "category": "indian_bags",
+    "active": true
+  },
+  {
+    "id": "tiger_marron",
+    "name": "Tiger Marron",
+    "url": "tigermarron.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Contemporary Leather Bags",
+    "region": "Mumbai",
+    "category": "indian_bags",
+    "active": true
+  },
+  {
+    "id": "stylecast_x_revolte",
+    "name": "Stylecast x Revolte",
+    "url": "myntra.com/stylecast-x-revolte",
+    "platform": "myntra_exclusive",
+    "aesthetic_hint": "Affordable Women's Western Everyday Wear",
+    "region": "India",
+    "category": "indian_fast_fashion_women",
+    "sells": [
+      "tees",
+      "tops",
+      "dresses",
+      "jackets",
+      "casual wear"
+    ],
+    "active": true
+  },
+  {
+    "id": "lulu_and_sky",
+    "name": "LULU & SKY",
+    "url": "luluandsky.com",
+    "platform": "custom",
+    "aesthetic_hint": "Rapid Drop Fast Fashion Women",
+    "region": "Mumbai",
+    "category": "indian_fast_fashion_women",
+    "sells": [
+      "dresses",
+      "tops",
+      "shoes",
+      "bags",
+      "jewellery",
+      "accessories"
+    ],
+    "active": true
+  },
+  {
+    "id": "glitchez",
+    "name": "Glitchez",
+    "url": "myntra.com/glitchez",
+    "platform": "myntra_exclusive",
+    "aesthetic_hint": "Budget Casual Western Wear",
+    "region": "India",
+    "category": "indian_fast_fashion_women",
+    "sells": [
+      "tops",
+      "jeans",
+      "dresses",
+      "hoodies",
+      "basics"
+    ],
+    "active": true
+  },
+  {
+    "id": "littlebox_india",
+    "name": "Littlebox India",
+    "url": "littleboxindia.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Gen Z D2C Fashion + Footwear (Shark Tank S3)",
+    "region": "Noida",
+    "category": "indian_fast_fashion_genz",
+    "sells": [
+      "co-ords",
+      "tops",
+      "trousers",
+      "dresses",
+      "heels",
+      "flats",
+      "platforms",
+      "plus-curve"
+    ],
+    "active": true
+  },
+  {
+    "id": "tann_ed",
+    "name": "TANN-ED",
+    "url": "tann-ed.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Bold Structured Statement Bags",
+    "region": "Mumbai",
+    "category": "indian_bags",
+    "active": true
+  },
+  {
+    "id": "miraggio",
+    "name": "Miraggio",
+    "url": "miraggiolife.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Trending Handbags 241K",
+    "region": "Mumbai",
+    "category": "indian_bags",
+    "active": true
+  },
+  {
+    "id": "lino_perros",
+    "name": "Lino Perros",
+    "url": "linoperros.com",
+    "platform": "shopify",
+    "aesthetic_hint": "Timeless Handbags Modern Sensibilities",
+    "region": "Mumbai",
+    "category": "indian_bags",
     "active": true
   }
 ]

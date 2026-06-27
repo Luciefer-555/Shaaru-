@@ -252,6 +252,111 @@ async def login(req: AuthRequest):
 #  ENDPOINTS
 # ══════════════════════════════════════════════════════════════════
 
+@app.post("/api/chat")
+async def chat_vision(req: ChatRequest):
+    """Two-step vision route: analyse image → then pull real brands via riley_think."""
+
+    if req.image_b64:
+        # STEP 1 — Vision call: structured image analysis
+        vision_message = f"""Look at this outfit image carefully and answer:
+
+1. TECHNIQUE: What specific styling technique is shown?
+   (e.g. "bandana waist wrap tied front point-down" not just "bandana")
+2. SILHOUETTE: Name each garment and describe fit
+   (e.g. "wide-leg pinstripe trousers, white satin button-down open 3 buttons")
+3. ACCESSORIES: What accessories, how exactly worn?
+4. VIBE: One word only — choose the PRIMARY silhouette vibe, not accessories:
+   streetwear = oversized/baggy fits, wide-leg, casual layering
+   minimal = clean lines, neutral tones, no embellishment  
+   ethnic = Indian garments, handloom, embroidery, traditional cuts
+   avant_garde = sculptural, experimental, unconventional construction
+   editorial = sharp tailoring, high-fashion, structured
+   maximalist = heavy embellishment, mirror work, sequins, bridal level
+   Choose based on the CLOTHES, not the accessories.
+5. HOW TO RECREATE: Step-by-step for the key technique only
+6. PROPORTION LOGIC: Why does this combination work?
+
+User's actual question: {req.message}
+
+Answer all 6 points. On the VIBE line write exactly one word.
+
+Do NOT suggest where to buy or recommend any stores, markets, 
+or websites - that section will be handled separately."""
+
+        vision_reply = chat_with_riley_cached(
+            user_id=req.user_id,
+            message=vision_message,
+            history=[],
+            image_b64=req.image_b64,
+        )
+
+        # STEP 2 — Direct Neo4j query, no LLM round trip
+        from pipeline.knowledge.graph_query import get_brands_by_vibe
+
+        vibe = "streetwear"  # fallback
+        vibe_map = {
+            "streetwear": "streetwear",
+            "minimal": "minimal",
+            "ethnic": "ethnic",
+            "avant_garde": "avant_garde",
+            "avant-garde": "avant_garde",
+            "editorial": "editorial",
+            "maximalist": "maximalist",
+            "genderfluid": "genderfluid",
+            "dark": "dark",
+            "handcrafted": "handcrafted",
+        }
+        vision_lower = vision_reply.lower()
+        for keyword, mapped in vibe_map.items():
+            if keyword in vision_lower:
+                vibe = mapped
+                break
+
+        # Keyword override — silhouette signals beat vibe label
+        vision_lower_full = vision_reply.lower()
+        streetwear_signals = [
+            "wide-leg", "wide leg", "baggy", "oversized jacket",
+            "pinstripe trouser", "bandana waist", "streetwear"
+        ]
+        ethnic_signals = [
+            "kurta", "saree", "lehenga", "handloom", "embroidery", 
+            "mirror work", "bandhani", "block print"
+        ]
+        if any(sig in vision_lower_full for sig in streetwear_signals):
+            vibe = "streetwear"
+        elif any(sig in vision_lower_full for sig in ethnic_signals):
+            vibe = "ethnic"
+        # else keep whatever vibe_map detected
+
+        brands = get_brands_by_vibe(vibe)
+
+        if brands:
+            brand_lines = [
+                f"• {b['name']} — {b['url']} ({b['aesthetic']}, {b['region']})"
+                for b in brands
+            ]
+            brand_section = "\n".join(brand_lines)
+        else:
+            brand_section = "No brands found in graph for this vibe."
+
+        combined = (
+            f"{vision_reply}\n\n"
+            f"---\n\n"
+            f"**Where to shop this vibe ({vibe}):**\n"
+            f"{brand_section}"
+        )
+        return {"reply": combined}
+    else:
+        # No image — straight to riley_think
+        from riley_brain import riley_think
+        result = riley_think(
+            user_message=req.message,
+            user_id=req.user_id,
+            conversation_history=req.history or [],
+        )
+        return {"reply": result.get("reply", "")}
+
+
 @app.post("/api/chat/message")
 async def chat_message(request: ChatMessageRequest, background_tasks: BackgroundTasks):
     from riley_brain import riley_think, _needs_tools

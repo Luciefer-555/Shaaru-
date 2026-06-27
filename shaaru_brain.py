@@ -957,6 +957,8 @@ def chat_with_riley_cached(
     tailor_signal = "\n\nTAILOR_INTENT_DETECTED" if (tailor_intent and has_image) else ""
 
     model, max_tokens = _select_model(message, has_image)
+    if has_image:
+        model = MODEL_VISION_90B
 
     system_msg = (
         f"{PERSONALITY_LAW}\n\nUSER CONTEXT:\n{context}{focus_context}"

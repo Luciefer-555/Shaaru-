@@ -4,6 +4,10 @@ import os
 import re
 
 from shaaru_brain import _get_db, _get_client
+from pipeline.knowledge.graph_query import (
+    get_brands_by_vibe,
+    get_brands_by_occasion,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +107,27 @@ SHAARU_TOOLS = [
           'top_k': {'type': 'integer', 'default': 5}
         },
         'required': ['aesthetic_query']
+      }
+    }
+  },
+  {
+    'type': 'function',
+    'function': {
+      'name': 'get_brands_by_vibe',
+      'description': 'Query Neo4j knowledge graph to find real Indian brands matching a vibe or occasion. Use this whenever user asks for brand recommendations, where to shop, or what brands match their style. Always prefer this over guessing brand names.',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'vibe': {
+            'type': 'string',
+            'description': 'The vibe or aesthetic to match. One of: streetwear, maximalist, minimal, avant_garde, ethnic, editorial, clean, genderfluid, dark, handcrafted, fast_fashion'
+          },
+          'region': {
+            'type': 'string',
+            'description': 'Optional city filter: Mumbai, Delhi, Chennai, Chandigarh, Bangalore'
+          }
+        },
+        'required': ['vibe']
       }
     }
   }
@@ -210,6 +235,12 @@ def execute_tool(tool_name: str, arguments: dict, user_id: str) -> str:
       aesthetics = [dict(r) for r in result]
     driver.close()
     return json.dumps({'aesthetics': aesthetics})
+
+  elif tool_name == 'get_brands_by_vibe':
+    vibe = arguments.get('vibe', '')
+    region = arguments.get('region')
+    brands = get_brands_by_vibe(vibe, region)
+    return json.dumps({'brands': brands, 'vibe': vibe})
 
   return json.dumps({'error': f'Unknown tool: {tool_name}'})
 
@@ -350,8 +381,8 @@ CRITICAL RULES:
       final_response = client.chat.completions.create(
         model='meta/llama-3.3-70b-instruct',
         messages=messages,
-        max_tokens=400,
-        timeout=25
+        max_tokens=600,
+        timeout=45
       )
       final_text = final_response.choices[0].message.content
     except Exception as e:
