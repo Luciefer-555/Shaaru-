@@ -7,7 +7,7 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from "react";
-import { Paperclip, ArrowUp, X, Camera, Pencil, Scissors, Sparkles } from "lucide-react";
+import { Paperclip, ArrowUp, X, Camera, Pencil, Scissors, Sparkles, Mic, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 interface Suggestion {
@@ -50,16 +50,75 @@ interface TailorInputProps {
   hideSuggestions?: boolean;
   placeholder?: string;
   onCameraOpen?: () => void;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-export function TailorInput({ onSend, disabled, hideSuggestions, placeholder, onCameraOpen }: TailorInputProps) {
+export function TailorInput({ onSend, disabled, hideSuggestions, placeholder, onCameraOpen, className, style }: TailorInputProps) {
   const [message, setMessage] = useState("");
   const [imageBase64, setImageBase64] = useState<string | undefined>();
   const [imagePreview, setImagePreview] = useState<string | undefined>();
   const [imageName, setImageName] = useState<string | undefined>();
   const [isDragging, setIsDragging] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleVoiceRecording = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        setIsTranscribing(true);
+        try {
+          const formData = new FormData();
+          formData.append("file", audioBlob, "recording.webm");
+          formData.append("user_id", "user");
+          formData.append("enable_tts", "true");
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+          const res = await fetch(`${apiUrl}/api/voice/stt`, {
+            method: "POST",
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.transcribed_text) {
+              setMessage((prev) => (prev ? prev + " " + data.transcribed_text : data.transcribed_text));
+            }
+            if (data.audio_base64) {
+              const audio = new Audio(`data:audio/mp3;base64,${data.audio_base64}`);
+              audio.play().catch(() => {});
+            }
+          }
+        } catch (err) {
+          console.error("[VOICE] Transcription failed:", err);
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("[VOICE] Mic access error:", err);
+    }
+  };
 
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current;
@@ -73,6 +132,7 @@ export function TailorInput({ onSend, disabled, hideSuggestions, placeholder, on
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
+      console.log("[TailorInput] FileReader loaded file:", file.name, "Length:", result?.length);
       setImagePreview(result);
       setImageBase64(result.split(",")[1]);
       setImageName(file.name);
@@ -144,12 +204,14 @@ export function TailorInput({ onSend, disabled, hideSuggestions, placeholder, on
 
       {/* Input Box */}
       <div
+        style={style}
         className={cn(
           "relative rounded-2xl transition-all duration-300 shadow-2xl",
           "bg-glass-bg backdrop-blur-xl",
           "border border-glass-border",
           isDragging && "border-shaaru-crimson ring-2 ring-shaaru-crimson/30",
           disabled && "opacity-60 pointer-events-none",
+          className,
         )}
         onDragOver={(e) => {
           e.preventDefault();
@@ -205,6 +267,27 @@ export function TailorInput({ onSend, disabled, hideSuggestions, placeholder, on
             title="Take photo"
           >
             <Camera className="w-4 h-4" />
+          </button>
+
+          {/* Voice Input Button */}
+          <button
+            onClick={toggleVoiceRecording}
+            disabled={isTranscribing}
+            className={cn(
+              "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 mb-0.5 relative",
+              isRecording
+                ? "bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.4)]"
+                : isTranscribing
+                ? "bg-white/5 text-[#A855F7]"
+                : "text-text-secondary-dark hover:text-text-primary-dark hover:bg-white/8"
+            )}
+            title={isRecording ? "Stop recording" : isTranscribing ? "Transcribing voice..." : "Voice input"}
+          >
+            {isTranscribing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
           </button>
 
           <input

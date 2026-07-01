@@ -1,7 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Mic } from "lucide-react";
+
+async function fetchWithTimeout(resource: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
+  const { timeout = 90000 } = options as any;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(resource, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
 
 type BBox = { x: number; y: number; w: number; h: number };
 
@@ -15,6 +29,17 @@ export type ScannedItem = {
   bbox: BBox;
   confidence: number;
   pixel_boxes?: { id: string; xyxy: number[] }[];
+};
+
+type MissingPiece = { role: string; find: string };
+
+export type StyleCombo = {
+  id: string;
+  name: string;
+  vibe: string;
+  items_used: string[];
+  directions: string;
+  missing: MissingPiece[];
 };
 
 // ── Surveillance canvas helpers ──────────────────────────────────
@@ -41,7 +66,6 @@ const _COLOR_HEX: Record<string, string> = {
   brown:"#6d4c41",beige:"#d7ccc8",cream:"#fffde7",indigo:"#3949ab",
   teal:"#00897b",ivory:"#fffff0",olive:"#827717",khaki:"#c0a060",
   maroon:"#880e4f",coral:"#ff7043",mint:"#a5d6a7",lavender:"#ce93d8",
-  white:"#f5f5f5",
 };
 function toHex(colorName: string): string {
   if (!colorName) return "#888";
@@ -99,8 +123,8 @@ function drawScanLabel(
   const CW = 180, CH = 66, GAP = 10;
   let cardX = bx + bw + GAP;
   let cardY = by;
-  if (cardX + CW > cw - 4) cardX = bx - CW - GAP;
-  cardY = Math.max(4, Math.min(cardY, ch - CH - 4));
+  if (cardX + CW > ctx.canvas.width - 4) cardX = bx - CW - GAP;
+  cardY = Math.max(4, Math.min(cardY, ctx.canvas.height - CH - 4));
 
   // Connector line
   const lx0 = cardX < bx ? bx : bx + bw;
@@ -217,6 +241,10 @@ export function CameraScanner({
   const [error, setError] = useState<string | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 
+  const [combos, setCombos]               = useState<StyleCombo[]>([]);
+  const [loadingCombos, setLoadingCombos] = useState(false);
+  const [view, setView]                   = useState<"items" | "combos">("items");
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -225,6 +253,60 @@ export function CameraScanner({
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const resultImgRef = useRef<HTMLImageElement>(null);
   const [capturedSrc, setCapturedSrc] = useState<string | null>(null);
+
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [isTranscribingVoice, setIsTranscribingVoice] = useState(false);
+  const voiceRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceChunksRef = useRef<Blob[]>([]);
+
+  const toggleLiveVoice = async () => {
+    if (isRecordingVoice) {
+      voiceRecorderRef.current?.stop();
+      setIsRecordingVoice(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceChunksRef.current = [];
+      const rec = new MediaRecorder(stream);
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) voiceChunksRef.current.push(e.data);
+      };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(voiceChunksRef.current, { type: "audio/webm" });
+        setIsTranscribingVoice(true);
+        try {
+          const formData = new FormData();
+          formData.append("file", blob, "live_voice.webm");
+          formData.append("user_id", userId);
+          formData.append("enable_tts", "true");
+          if (lastCapturedB64.current) {
+            formData.append("image_base64", lastCapturedB64.current);
+          }
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+          const res = await fetch(`${apiUrl}/api/voice/stt`, { method: "POST", body: formData });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.reply) setGuidance(data.reply);
+            if (data.audio_base64) {
+              const audio = new Audio(`data:audio/mp3;base64,${data.audio_base64}`);
+              audio.play().catch(() => {});
+            }
+          }
+        } catch (err) {
+          console.error("[LIVE VOICE] error:", err);
+        } finally {
+          setIsTranscribingVoice(false);
+        }
+      };
+      voiceRecorderRef.current = rec;
+      rec.start();
+      setIsRecordingVoice(true);
+    } catch (err) {
+      console.error("[LIVE VOICE] mic error:", err);
+    }
+  };
 
   useEffect(() => {
     const initCamera = async () => {
@@ -342,7 +424,7 @@ export function CameraScanner({
     setCapturedSrc(dataUrl);
 
     try {
-      const response = await fetch("/api/cv/scan", {
+      const response = await fetchWithTimeout("/api/cv/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image_b64, user_id: userId }),
@@ -369,12 +451,32 @@ export function CameraScanner({
     }
   };
 
+  const handleGetCombos = async () => {
+    if (!detectedItems.length) return;
+    setLoadingCombos(true);
+    setView("combos");
+    try {
+      const res = await fetchWithTimeout("/api/cv/style-combos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: detectedItems, user_id: userId }),
+      });
+      const data = await res.json();
+      setCombos(data.combos || []);
+    } catch (err) {
+      console.error("[CameraScanner] combos error:", err);
+      setCombos([]);
+    } finally {
+      setLoadingCombos(false);
+    }
+  };
+
   const handleItemTap = async (item: ScannedItem) => {
     if (!lastCapturedB64.current) return;
 
     setAnalyzing(true);
     try {
-      const response = await fetch("/api/cv/analyze", {
+      const response = await fetchWithTimeout("/api/cv/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -444,13 +546,28 @@ export function CameraScanner({
                 </p>
               </div>
             )}
-            <div className="absolute bottom-10 left-0 right-0 flex justify-center">
+            <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center gap-6">
               <button
                 onClick={handleCapture}
                 disabled={scanning}
                 className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#A855F7] to-purple-400 flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-purple-500/20"
               >
                 {scanning ? <Loader2 className="w-8 h-8 animate-spin text-white" /> : <div className="w-16 h-16 rounded-full border-4 border-white" />}
+              </button>
+
+              <button
+                onClick={toggleLiveVoice}
+                disabled={isTranscribingVoice}
+                className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all ${
+                  isRecordingVoice
+                    ? "bg-red-500/30 border-red-500 text-red-400 animate-pulse"
+                    : isTranscribingVoice
+                    ? "bg-white/10 border-white/20 text-[#A855F7]"
+                    : "bg-black/50 border-white/20 text-white hover:bg-white/10"
+                }`}
+                title="Speak to Riley"
+              >
+                {isTranscribingVoice ? <Loader2 className="w-6 h-6 animate-spin" /> : <Mic className="w-6 h-6" />}
               </button>
             </div>
           </>
@@ -476,40 +593,156 @@ export function CameraScanner({
               )}
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-              {detectedItems.length === 0 && (
-                <p className="text-center text-gray-400 py-4">No items detected.</p>
-              )}
-              {detectedItems.map((item) => (
+            <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+
+              {/* Tab bar */}
+              <div className="flex border-b border-white/10 px-4 pt-2 gap-1 flex-shrink-0">
                 <button
-                  key={item.id}
-                  onClick={() => handleItemTap(item)}
-                  disabled={analyzing}
-                  className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-left disabled:opacity-50 disabled:pointer-events-none"
+                  onClick={() => setView("items")}
+                  className={`px-4 py-2 text-sm font-medium tracking-wide transition-colors border-b-2 -mb-px ${
+                    view === "items"
+                      ? "border-[#A855F7] text-white"
+                      : "border-transparent text-gray-500 hover:text-gray-300"
+                  }`}
                 >
-                  <div>
-                    <p className="font-medium text-lg">{item.label}</p>
-                    <p className="text-sm text-gray-400 capitalize">{item.color} • {item.aesthetic}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-[#A855F7] bg-[#A855F7]/10 px-2 py-1 rounded-full">
-                      {Math.round(item.confidence * 100)}%
-                    </span>
-                  </div>
+                  ITEMS ({detectedItems.length})
                 </button>
-              ))}
-              
-              <div className="mt-4 flex justify-center">
                 <button
                   onClick={() => {
-                    setAnnotatedFrame(null);
-                    setDetectedItems([]);
+                    if (!combos.length && !loadingCombos) handleGetCombos();
+                    else setView("combos");
                   }}
-                  disabled={analyzing}
-                  className="px-6 py-3 rounded-full border border-white/20 hover:bg-white/10 transition-colors font-medium"
+                  className={`px-4 py-2 text-sm font-medium tracking-wide transition-colors border-b-2 -mb-px ${
+                    view === "combos"
+                      ? "border-[#A855F7] text-white"
+                      : "border-transparent text-gray-500 hover:text-gray-300"
+                  }`}
                 >
-                  Scan Again
+                  COMBOS
                 </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+
+                {/* ITEMS VIEW */}
+                {view === "items" && (
+                  <>
+                    {detectedItems.length === 0 && (
+                      <p className="text-center text-gray-400 py-4">No items detected.</p>
+                    )}
+                    {detectedItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleItemTap(item)}
+                        disabled={analyzing}
+                        className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-left disabled:opacity-50 disabled:pointer-events-none"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ background: catStyle(item.category).color }}
+                            />
+                            <p className="font-medium">{item.label}</p>
+                          </div>
+                          <p className="text-sm text-gray-400 capitalize pl-4">
+                            {item.color} • {item.description}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold text-[#A855F7] bg-[#A855F7]/10 px-2 py-1 rounded-full ml-3 flex-shrink-0">
+                          {Math.round(item.confidence * 100)}%
+                        </span>
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {/* COMBOS VIEW */}
+                {view === "combos" && (
+                  <>
+                    {loadingCombos ? (
+                      <div className="flex flex-col items-center justify-center py-12 gap-3">
+                        <Loader2 className="w-8 h-8 animate-spin text-[#A855F7]" />
+                        <p className="text-sm text-gray-400 tracking-wide">Riley is building looks...</p>
+                      </div>
+                    ) : combos.length === 0 ? (
+                      <p className="text-center text-gray-400 py-4">No combos generated.</p>
+                    ) : (
+                      combos.map((combo) => (
+                        <div
+                          key={combo.id}
+                          className="rounded-xl bg-white/5 border border-white/10 overflow-hidden"
+                        >
+                          {/* Combo header */}
+                          <div className="p-4 border-b border-white/8">
+                            <p className="font-bold text-base tracking-wide">{combo.name}</p>
+                            <p className="text-sm text-[#A855F7] mt-0.5">{combo.vibe}</p>
+                          </div>
+
+                          {/* Items used as colored tags */}
+                          <div className="px-4 pt-3 flex flex-wrap gap-1.5">
+                            {combo.items_used.map((id) => {
+                              const item = detectedItems.find((i) => i.id === id);
+                              if (!item) return null;
+                              const { color } = catStyle(item.category);
+                              return (
+                                <span
+                                  key={id}
+                                  className="text-xs px-2.5 py-1 rounded-full font-mono border"
+                                  style={{ borderColor: `${color}66`, color }}
+                                >
+                                  {item.label}
+                                </span>
+                              );
+                            })}
+                          </div>
+
+                          {/* Riley's directions */}
+                          <p className="px-4 pt-3 pb-3 text-sm text-gray-300 leading-relaxed">
+                            {combo.directions}
+                          </p>
+
+                          {/* Missing pieces */}
+                          {combo.missing.length > 0 && (
+                            <div className="px-4 pb-4 flex flex-col gap-2">
+                              <p className="text-xs text-gray-500 uppercase tracking-[0.15em]">
+                                Find these
+                              </p>
+                              {combo.missing.map((m, i) => (
+                                <div
+                                  key={i}
+                                  className="p-3 rounded-lg bg-[#A855F7]/8 border border-[#A855F7]/20"
+                                >
+                                  <p className="text-xs text-[#A855F7] uppercase tracking-wider mb-1">
+                                    {m.role}
+                                  </p>
+                                  <p className="text-sm text-gray-200 leading-snug">{m.find}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </>
+                )}
+
+                {/* Scan Again */}
+                <div className="mt-2 flex justify-center pb-2">
+                  <button
+                    onClick={() => {
+                      setAnnotatedFrame(null);
+                      setDetectedItems([]);
+                      setCombos([]);
+                      setView("items");
+                    }}
+                    disabled={analyzing}
+                    className="px-6 py-3 rounded-full border border-white/20 hover:bg-white/10 transition-colors font-medium disabled:opacity-50"
+                  >
+                    Scan Again
+                  </button>
+                </div>
+
               </div>
             </div>
           </div>

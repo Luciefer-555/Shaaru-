@@ -21,7 +21,9 @@ from typing import Optional, List, Dict
 from dotenv import load_dotenv
 load_dotenv()
 
+import asyncio
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status, BackgroundTasks
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from passlib.context import CryptContext
@@ -56,6 +58,24 @@ try:
 except Exception as e:
     log.warning(f"[API] Trend scheduler not started: {e}")
 
+@app.on_event("startup")
+async def startup_event():
+    from pipeline.knowledge.graph_query import get_driver
+    try:
+        get_driver()
+        log.info("[API] Neo4j driver initialized on startup.")
+    except Exception as e:
+        log.warning(f"[API] Neo4j startup warning: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    from pipeline.knowledge.graph_query import close_driver
+    try:
+        close_driver()
+        log.info("[API] Neo4j driver closed on shutdown.")
+    except Exception as e:
+        log.warning(f"[API] Neo4j shutdown warning: {e}")
+
 # ── Imports (graceful) ───────────────────────────────────────────
 from shaaru_brain import chat_with_riley_cached, detect_tailor_intent
 
@@ -68,6 +88,13 @@ try:
     print("[OK] CV router loaded")
 except Exception as e:
     print(f"[FAIL] CV router: {e}")
+
+try:
+    from voice_router import router as voice_router
+    app.include_router(voice_router)
+    print("[OK] Voice router loaded")
+except Exception as e:
+    print(f"[FAIL] Voice router: {e}")
 
 try:
     from face_analysis import analyze_face_b64
@@ -128,6 +155,7 @@ class ChatMessageRequest(BaseModel):
     user_id: str
     message: str
     history: list = []
+    image_base64: Optional[str] = None
 
 class ChatResponse(BaseModel):
     response: str
@@ -255,10 +283,10 @@ async def login(req: AuthRequest):
 @app.post("/api/chat")
 async def chat_vision(req: ChatRequest):
     """Two-step vision route: analyse image → then pull real brands via riley_think."""
-
-    if req.image_b64:
-        # STEP 1 — Vision call: structured image analysis
-        vision_message = f"""Look at this outfit image carefully and answer:
+    try:
+        if req.image_b64:
+            # STEP 1 — Vision call: structured image analysis
+            vision_message = f"""Look at this outfit image carefully and answer:
 
 1. TECHNIQUE: What specific styling technique is shown?
    (e.g. "bandana waist wrap tied front point-down" not just "bandana")
@@ -283,138 +311,146 @@ Answer all 6 points. On the VIBE line write exactly one word.
 Do NOT suggest where to buy or recommend any stores, markets, 
 or websites - that section will be handled separately."""
 
-        vision_reply = chat_with_riley_cached(
-            user_id=req.user_id,
-            message=vision_message,
-            history=[],
-            image_b64=req.image_b64,
-        )
+            vision_reply = chat_with_riley_cached(
+                user_id=req.user_id,
+                message=vision_message,
+                history=[],
+                image_b64=req.image_b64,
+            )
 
-        # STEP 2 — Direct Neo4j query, no LLM round trip
-        from pipeline.knowledge.graph_query import get_brands_by_vibe
+            # STEP 2 — Direct Neo4j query, no LLM round trip
+            from pipeline.knowledge.graph_query import get_brands_by_vibe
 
-        vibe = "streetwear"  # fallback
-        vibe_map = {
-            "streetwear": "streetwear",
-            "minimal": "minimal",
-            "ethnic": "ethnic",
-            "avant_garde": "avant_garde",
-            "avant-garde": "avant_garde",
-            "editorial": "editorial",
-            "maximalist": "maximalist",
-            "genderfluid": "genderfluid",
-            "dark": "dark",
-            "handcrafted": "handcrafted",
-        }
-        vision_lower = vision_reply.lower()
-        for keyword, mapped in vibe_map.items():
-            if keyword in vision_lower:
-                vibe = mapped
-                break
+            vibe = "streetwear"  # fallback
+            vibe_map = {
+                "streetwear": "streetwear",
+                "minimal": "minimal",
+                "ethnic": "ethnic",
+                "avant_garde": "avant_garde",
+                "avant-garde": "avant_garde",
+                "editorial": "editorial",
+                "maximalist": "maximalist",
+                "genderfluid": "genderfluid",
+                "dark": "dark",
+                "handcrafted": "handcrafted",
+            }
+            vision_lower = vision_reply.lower()
+            for keyword, mapped in vibe_map.items():
+                if keyword in vision_lower:
+                    vibe = mapped
+                    break
 
-        # Keyword override — silhouette signals beat vibe label
-        vision_lower_full = vision_reply.lower()
-        streetwear_signals = [
-            "wide-leg", "wide leg", "baggy", "oversized jacket",
-            "pinstripe trouser", "bandana waist", "streetwear"
-        ]
-        ethnic_signals = [
-            "kurta", "saree", "lehenga", "handloom", "embroidery", 
-            "mirror work", "bandhani", "block print"
-        ]
-        if any(sig in vision_lower_full for sig in streetwear_signals):
-            vibe = "streetwear"
-        elif any(sig in vision_lower_full for sig in ethnic_signals):
-            vibe = "ethnic"
-        # else keep whatever vibe_map detected
-
-        brands = get_brands_by_vibe(vibe)
-
-        if brands:
-            brand_lines = [
-                f"• {b['name']} — {b['url']} ({b['aesthetic']}, {b['region']})"
-                for b in brands
+            # Keyword override — silhouette signals beat vibe label
+            vision_lower_full = vision_reply.lower()
+            streetwear_signals = [
+                "wide-leg", "wide leg", "baggy", "oversized jacket",
+                "pinstripe trouser", "bandana waist", "streetwear"
             ]
-            brand_section = "\n".join(brand_lines)
-        else:
-            brand_section = "No brands found in graph for this vibe."
+            ethnic_signals = [
+                "kurta", "saree", "lehenga", "handloom", "embroidery", 
+                "mirror work", "bandhani", "block print"
+            ]
+            if any(sig in vision_lower_full for sig in streetwear_signals):
+                vibe = "streetwear"
+            elif any(sig in vision_lower_full for sig in ethnic_signals):
+                vibe = "ethnic"
+            # else keep whatever vibe_map detected
 
-        combined = (
-            f"{vision_reply}\n\n"
-            f"---\n\n"
-            f"**Where to shop this vibe ({vibe}):**\n"
-            f"{brand_section}"
-        )
-        return {"reply": combined}
-    else:
-        # No image — straight to riley_think
-        from riley_brain import riley_think
-        result = riley_think(
-            user_message=req.message,
-            user_id=req.user_id,
-            conversation_history=req.history or [],
-        )
-        return {"reply": result.get("reply", "")}
+            brands = get_brands_by_vibe(vibe)
+
+            if brands:
+                brand_lines = [
+                    f"• {b['name']} — {b['url']} ({b['aesthetic']}, {b['region']})"
+                    for b in brands
+                ]
+                brand_section = "\n".join(brand_lines)
+            else:
+                brand_section = "No brands found in graph for this vibe."
+
+            combined = (
+                f"{vision_reply}\n\n"
+                f"---\n\n"
+                f"**Where to shop this vibe ({vibe}):**\n"
+                f"{brand_section}"
+            )
+            return {"reply": combined}
+        else:
+            # No image — straight to riley_think
+            from riley_brain import riley_think
+            result = riley_think(
+                user_message=req.message,
+                user_id=req.user_id,
+                conversation_history=req.history or [],
+            )
+            return {"reply": result.get("reply", "")}
+    except Exception as e:
+        log.error(f"Error in /api/chat: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"error": "Riley ran into a problem. Try again.", "detail": str(e)})
 
 
 @app.post("/api/chat/message")
 async def chat_message(request: ChatMessageRequest, background_tasks: BackgroundTasks):
-    from riley_brain import riley_think, _needs_tools
-    from shaaru_brain import _get_db
-    db = _get_db()
+    try:
+        from riley_brain import riley_think, _needs_tools
+        from shaaru_brain import _get_db
+        db = _get_db()
     
-    session = db['chat_sessions'].find_one({'user_id': request.user_id})
-    history = session.get('history', [])[-10:] if session else []
+        session = db['chat_sessions'].find_one({'user_id': request.user_id})
+        history = session.get('history', [])[-10:] if session else []
 
-    result = riley_think(
-        user_message=request.message,
-        user_id=request.user_id,
-        conversation_history=history
-    )
-    
-    db['chat_sessions'].update_one(
-        {'user_id': request.user_id},
-        {'$push': {
-            'history': {
-                '$each': [
-                    {'role': 'user', 'content': request.message},
-                    {'role': 'assistant', 'content': result['reply']}
-                ]
-            }
-        },
-        '$set': {'updated_at': datetime.now(timezone.utc)}},
-        upsert=True
-    )
-    
-    response = {
-        'reply': result['reply'],
-        'tool_calls': result['tool_calls'],
-        'model': result['model']
-    }
-    
-    # If tailor flow was triggered, add redirect signal
-    for tool in result['tool_calls']:
-        if tool['tool'] == 'trigger_tailor_flow':
-            if tool['result'].get('status') == 'tailor_flow_triggered':
-                response['action'] = {
-                    'type': 'redirect',
-                    'destination': '/tailor',
-                    'garment': tool['result'].get('garment')
+        result = riley_think(
+            user_message=request.message,
+            user_id=request.user_id,
+            conversation_history=history,
+            image_base64=request.image_base64
+        )
+        
+        db['chat_sessions'].update_one(
+            {'user_id': request.user_id},
+            {'$push': {
+                'history': {
+                    '$each': [
+                        {'role': 'user', 'content': request.message},
+                        {'role': 'assistant', 'content': result['reply']}
+                    ]
                 }
+            },
+            '$set': {'updated_at': datetime.now(timezone.utc)}},
+            upsert=True
+        )
+        
+        response = {
+            'reply': result['reply'],
+            'tool_calls': result['tool_calls'],
+            'model': result['model']
+        }
+        
+        # If tailor flow was triggered, add redirect signal
+        for tool in result['tool_calls']:
+            if tool['tool'] == 'trigger_tailor_flow':
+                if tool['result'].get('status') == 'tailor_flow_triggered':
+                    response['action'] = {
+                        'type': 'redirect',
+                        'destination': '/tailor',
+                        'garment': tool['result'].get('garment')
+                    }
 
-    # Two-phase response: Phase 1 instant Neo4j answer (<1s), Phase 2 background extraction
-    if _needs_tools(request.message):
-        try:
-            from shaaru_brain import answer as shaaru_answer
-            from pipeline.on_demand.extractor import handle_user_query
-            brain_result = await shaaru_answer(query=request.message)
-            if brain_result.get("needs_enrichment"):
-                background_tasks.add_task(handle_user_query, **brain_result["enrichment_args"])
-                log.info(f"[TwoPhase] Queued background enrichment for: '{request.message}'")
-        except Exception as bg_e:
-            log.warning(f"[TwoPhase] Background queue error: {bg_e}")
+        # Two-phase response: Phase 1 instant Neo4j answer (<1s), Phase 2 background extraction
+        if _needs_tools(request.message):
+            try:
+                from shaaru_brain import answer as shaaru_answer
+                from pipeline.on_demand.extractor import handle_user_query
+                brain_result = await shaaru_answer(query=request.message)
+                if brain_result.get("needs_enrichment"):
+                    background_tasks.add_task(handle_user_query, **brain_result["enrichment_args"])
+                    log.info(f"[TwoPhase] Queued background enrichment for: '{request.message}'")
+            except Exception as bg_e:
+                log.warning(f"[TwoPhase] Background queue error: {bg_e}")
 
-    return response
+        return response
+    except Exception as e:
+        log.error(f"Error in /api/chat/message: {e}", exc_info=True)
+        return JSONResponse(status_code=500, content={"error": "Riley ran into a problem. Try again.", "detail": str(e)})
 
 
 @app.get("/api/profile/{user_id}")
@@ -696,22 +732,28 @@ def _evaluate_last_response(user_id: str, signal_type: str, product_id: str):
 @app.post("/api/signal/save")
 async def save_signal(req: SignalRequest):
     from signal_collector import collect_signal
+    from taste_engine import update_taste_vector
     collect_signal(req.user_id, "saved", req.product_id)
     _evaluate_last_response(req.user_id, "saved", req.product_id)
+    asyncio.to_thread(update_taste_vector, req.user_id, req.product_id, "save")
     return {"status": "ok", "signal": "saved", "user_id": req.user_id}
 
 @app.post("/api/signal/skip")
 async def skip_signal(req: SignalRequest):
     from signal_collector import collect_signal
+    from taste_engine import update_taste_vector
     collect_signal(req.user_id, "skipped", req.product_id)
     _evaluate_last_response(req.user_id, "skipped", req.product_id)
+    asyncio.to_thread(update_taste_vector, req.user_id, req.product_id, "skip")
     return {"status": "ok", "signal": "skipped", "user_id": req.user_id}
 
 @app.post("/api/signal/purchase")
 async def purchase_signal(req: SignalRequest):
     from signal_collector import collect_signal
+    from taste_engine import update_taste_vector
     collect_signal(req.user_id, "purchased", req.product_id)
     _evaluate_last_response(req.user_id, "purchased", req.product_id)
+    asyncio.to_thread(update_taste_vector, req.user_id, req.product_id, "purchase")
     return {"status": "ok", "signal": "purchased", "user_id": req.user_id}
 
 
@@ -724,7 +766,7 @@ class OnboardingInitRequest(BaseModel):
 
 class OnboardingTasteRequest(BaseModel):
     user_id: str
-    name: str
+    name: Optional[str] = None
     height_cm: Optional[float] = None
     body_type: Optional[str] = None
     everyday: Optional[list] = None
@@ -734,9 +776,14 @@ class OnboardingTasteRequest(BaseModel):
     color_palette: Optional[list] = None
     occasion: Optional[list] = None
     style_icon: Optional[str] = None
+    preferred_brands: Optional[list] = None
 
 class OnboardingCompleteRequest(BaseModel):
     user_id: str
+
+class OnboardingAestheticsRequest(BaseModel):
+    user_id: str
+    aesthetics: list
 
 @app.post("/api/onboarding/init")
 async def onboarding_init(req: OnboardingInitRequest):
@@ -803,7 +850,8 @@ async def onboarding_taste(req: OnboardingTasteRequest):
                     "dream_outfit": req.dream_outfit or [],
                     "color_palette": req.color_palette or [],
                     "occasion": req.occasion or [],
-                    "style_icon": req.style_icon
+                    "style_icon": req.style_icon,
+                    "preferred_brands": req.preferred_brands or []
                 },
                 "physical": {
                     "height_cm": req.height_cm,
@@ -814,8 +862,7 @@ async def onboarding_taste(req: OnboardingTasteRequest):
     return {"status": "ok", "user_id": req.user_id}
 
 @app.post("/api/onboarding/complete")
-async def onboarding_complete(req: OnboardingCompleteRequest, user: dict = Depends(get_current_user)):
-    _require_same_user(req.user_id, user)
+async def onboarding_complete(req: OnboardingCompleteRequest):
     db = _get_db()
     if db is None:
         raise HTTPException(500, "Database unavailable")
@@ -881,6 +928,21 @@ async def onboarding_complete(req: OnboardingCompleteRequest, user: dict = Depen
             log.warning(f"Neo4j onboarding complete failed: {e}")
             
     return {"status": "complete", "user_id": req.user_id, "style_equation": style_equation}
+
+
+@app.post("/api/onboarding/aesthetics")
+async def onboarding_aesthetics(req: OnboardingAestheticsRequest):
+    db = _get_db()
+    if db is None:
+        raise HTTPException(500, "Database unavailable")
+    db["users"].update_one(
+        {"user_id": req.user_id},
+        {"$set": {
+            "taste.selected_aesthetics": req.aesthetics,
+            "meta.onboarding_complete": True
+        }}
+    )
+    return {"status": "ok", "user_id": req.user_id, "aesthetics": req.aesthetics}
 
 
 @app.get("/api/health")
