@@ -216,9 +216,9 @@ Return exactly: {{"x": float, "y": float, "w": float, "h": float}}"""
 
 _BATCH_BBOX_PROMPT = """Return ONLY a JSON object. No markdown, no explanation.
 
-Divide this image into a 4-column x 3-row grid:
-  Columns left to right : 1  2  3  4   (each = 25% of image width)
-  Rows top to bottom    : A  B  C       (each = 33% of image height)
+Divide this image into an 8-column x 6-row grid:
+  Columns left to right : 1 2 3 4 5 6 7 8   (each = 12.5% of image width)
+  Rows top to bottom    : A B C D E F       (each = 16.7% of image height)
 
 Locate each clothing item listed below and report which grid cells it occupies.
 
@@ -231,26 +231,18 @@ Return exactly:
 }}
 
 Rules:
-- cols: 1 to 3 adjacent integers from 1-4
-- rows: 1 to 3 adjacent letters from A, B, C
+- cols: 1 to 4 adjacent integers from 1-8
+- rows: 1 to 4 adjacent letters from A to F
 - No two items should have identical positions
-- Items on a hanging rack: torso/upper body usually in rows A-B, trousers/shoes in rows B-C
-- Estimate confidently — never return empty cols or rows
-
-Example for 3 items on a rack:
-{{
-  "item_1": {{"cols": [1, 2], "rows": ["A", "B"]}},
-  "item_2": {{"cols": [3], "rows": ["A", "B"]}},
-  "item_3": {{"cols": [2], "rows": ["B", "C"]}}
-}}"""
+- Estimate confidently — never return empty cols or rows"""
 
 
 def _grid_to_bbox(pos: dict) -> dict:
-    """Convert 4-col x 3-row grid classification to normalized 0-1 bbox."""
-    COL = {1: 0.00, 2: 0.25, 3: 0.50, 4: 0.75}
-    ROW = {"A": 0.00, "B": 0.33, "C": 0.67}
+    """Convert 8-col x 6-row grid classification to normalized 0-1 bbox."""
+    COL = {1: 0.00, 2: 0.125, 3: 0.25, 4: 0.375, 5: 0.50, 6: 0.625, 7: 0.75, 8: 0.875}
+    ROW = {"A": 0.00, "B": 0.167, "C": 0.333, "D": 0.50, "E": 0.667, "F": 0.833}
     try:
-        cols = sorted(int(c) for c in pos.get("cols", []) if 1 <= int(c) <= 4)
+        cols = sorted(int(c) for c in pos.get("cols", []) if 1 <= int(c) <= 8)
         rows = sorted(
             str(r).upper() for r in pos.get("rows", [])
             if str(r).upper() in ROW
@@ -263,13 +255,13 @@ def _grid_to_bbox(pos: dict) -> dict:
 
     x = COL[cols[0]]
     y = ROW[rows[0]]
-    w = min(len(cols) * 0.25 + 0.02, 1.0 - x)
-    h = min(len(rows) * 0.33 + 0.02, 1.0 - y)
+    w = min(len(cols) * 0.125 + 0.01, 1.0 - x)
+    h = min(len(rows) * 0.167 + 0.01, 1.0 - y)
     return {
-        "x": round(x, 2),
-        "y": round(y, 2),
-        "w": round(w, 2),
-        "h": round(h, 2),
+        "x": round(x, 3),
+        "y": round(y, 3),
+        "w": round(w, 3),
+        "h": round(h, 3),
     }
 
 
@@ -349,17 +341,18 @@ def _resolve_bbox_collisions(items: list, grid_map: dict) -> dict:
     Iterates through ALL_COLS x ALL_ROWS in ascending size order
     so smaller (more precise) cells are preferred over large ones.
     """
-    ALL_COLS = [
-        [1],[2],[3],[4],
-        [1,2],[2,3],[3,4],
-        [1,2,3],[2,3,4],
-        [1,2,3,4],
-    ]
-    ALL_ROWS = [
-        ["A"],["B"],["C"],
-        ["A","B"],["B","C"],
-        ["A","B","C"],
-    ]
+    col_range = list(range(1, 9))
+    row_range = ["A", "B", "C", "D", "E", "F"]
+    
+    ALL_COLS = []
+    for length in range(1, 5):
+        for i in range(len(col_range) - length + 1):
+            ALL_COLS.append(col_range[i:i+length])
+            
+    ALL_ROWS = []
+    for length in range(1, 5):
+        for i in range(len(row_range) - length + 1):
+            ALL_ROWS.append(row_range[i:i+length])
 
     used: set = set()
     resolved: dict = {}
@@ -370,10 +363,10 @@ def _resolve_bbox_collisions(items: list, grid_map: dict) -> dict:
             continue
 
         pos = grid_map[iid]
-        cols = sorted(int(c) for c in pos.get("cols", [1]) if 1 <= int(c) <= 4)
+        cols = sorted(int(c) for c in pos.get("cols", [1]) if 1 <= int(c) <= 8)
         rows = sorted(
             str(r).upper() for r in pos.get("rows", ["A"])
-            if str(r).upper() in ("A", "B", "C")
+            if str(r).upper() in ("A", "B", "C", "D", "E", "F")
         )
         key = (tuple(cols), tuple(rows))
 
@@ -404,7 +397,7 @@ def _resolve_bbox_collisions(items: list, grid_map: dict) -> dict:
 def _batch_localize_bboxes(client, items: list, image_b64: str) -> list:
     """
     Single-call grid-based bbox localization for all items at once.
-    Uses 4x3 grid classification instead of float coordinates —
+    Uses 8x6 grid classification instead of float coordinates —
     far more reliable for vision LLMs.
     """
     if not items:
