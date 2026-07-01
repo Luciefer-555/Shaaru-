@@ -126,9 +126,41 @@ If frame_quality is poor: return
 """
 
 
+def _repair_json_with_llm(malformed_text: str) -> Optional[dict]:
+    """Second pass JSON repair using fast LLM text model."""
+    try:
+        client = _get_client()
+        prompt = (
+            "Fix and complete this malformed/truncated JSON object so it parses validly. "
+            "Return ONLY valid JSON, no explanation.\n\n"
+            f"{malformed_text[:2500]}"
+        )
+        raw = client.chat.completions.create(
+            model="meta/llama-3.1-8b-instruct",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            max_tokens=1500,
+            timeout=15.0,
+        )
+        content = raw.choices[0].message.content or ""
+        clean = content.strip()
+        if "```json" in clean:
+            clean = clean.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean:
+            clean = clean.split("```")[1].split("```")[0].strip()
+        start = clean.find("{")
+        end = clean.rfind("}") + 1
+        if start >= 0 and end > start:
+            return json.loads(clean[start:end])
+        return json.loads(clean)
+    except Exception as e:
+        log.warning(f"[CV] LLM JSON repair failed: {e}")
+        return None
+
+
 def _parse_scan_json(text: str) -> Optional[dict]:
     """Extract and parse JSON from a model response string.
-    Falls back to partial recovery for truncated responses."""
+    Falls back to partial recovery and LLM repair pass for truncated responses."""
     if not text:
         return None
     text = text.strip()
@@ -161,35 +193,38 @@ def _parse_scan_json(text: str) -> Optional[dict]:
     # Extract only the complete item objects before truncation
     import re
     items_start = text.find('"items"')
-    if items_start == -1:
-        return None
-    try:
-        # Find all complete item objects using regex
-        item_pattern = re.compile(
-            r'\{[^{}]*"id"\s*:\s*"[^"]*"[^{}]*\}',
-            re.DOTALL
-        )
-        found = item_pattern.findall(text)
-        if not found:
-            return None
-        items = []
-        for raw_item in found:
-            try:
-                items.append(json.loads(raw_item))
-            except json.JSONDecodeError:
-                continue
-        if items:
-            log.warning(
-                f"[CV] Partial JSON recovery: salvaged {len(items)} items "
-                f"from truncated response"
+    if items_start != -1:
+        try:
+            item_pattern = re.compile(
+                r'\{[^{}]*"id"\s*:\s*"[^"]*"[^{}]*\}',
+                re.DOTALL
             )
-            return {
-                "items": items,
-                "frame_quality": "good",
-                "scene_lighting": "unknown",
-            }
-    except Exception as e:
-        log.warning(f"[CV] Partial recovery failed: {e}")
+            found = item_pattern.findall(text)
+            if found:
+                items = []
+                for raw_item in found:
+                    try:
+                        items.append(json.loads(raw_item))
+                    except json.JSONDecodeError:
+                        continue
+                if items:
+                    log.warning(
+                        f"[CV] Partial JSON recovery: salvaged {len(items)} items "
+                        f"from truncated response"
+                    )
+                    return {
+                        "items": items,
+                        "frame_quality": "good",
+                        "scene_lighting": "unknown",
+                    }
+        except Exception as e:
+            log.warning(f"[CV] Partial recovery failed: {e}")
+
+    # Second pass: LLM repair if regex/string repair failed
+    repaired = _repair_json_with_llm(text)
+    if repaired and isinstance(repaired, dict):
+        log.info("[CV] Successfully repaired malformed/truncated JSON via LLM pass")
+        return repaired
 
     return None
 
