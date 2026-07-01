@@ -22,10 +22,10 @@ router = APIRouter(prefix="/api/voice", tags=["voice"])
 
 class TTSRequest(BaseModel):
     text: str
-    voice: Optional[str] = "alloy"
+    voice: Optional[str] = "nova"
 
 
-def generate_tts_audio(text: str, voice: str = "alloy") -> Optional[str]:
+def generate_tts_audio(text: str, voice: str = "nova") -> Optional[str]:
     """Generate base64 audio string from text using available TTS APIs."""
     if not text.strip():
         return None
@@ -74,7 +74,7 @@ def generate_tts_audio(text: str, voice: str = "alloy") -> Optional[str]:
 @router.post("/tts")
 async def text_to_speech(req: TTSRequest):
     """Synthesize text into speech audio."""
-    audio_b64 = generate_tts_audio(req.text, req.voice or "alloy")
+    audio_b64 = generate_tts_audio(req.text, req.voice or "nova")
     if not audio_b64:
         return {"status": "unavailable", "message": "No voice API keys configured or service offline."}
     return {"status": "ok", "audio_base64": audio_b64, "format": "mp3"}
