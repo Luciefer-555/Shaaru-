@@ -167,56 +167,97 @@ No markdown. No backticks. No text before or after.
 """
 
 
-def extract_vision(image_urls: list, model_config: dict, db_refs: dict):
-    """
-    Extracts structured vision data from up to 3 image URLs using the specified model.
-    """
-    client = get_client(model_config["provider"])
-    
-    prompt_text = build_vision_prompt(db_refs)
-    
-    # NIM API only allows 1 image per prompt for Llama-3.2-90b-vision
-    image_urls = image_urls[:1]
-    
-    content = [{"type": "text", "text": prompt_text}]
-    for url in image_urls:
-        content.append({
-            "type": "image_url",
-            "image_url": {"url": url}
-        })
+def _merge_vision_results(results: list) -> dict:
+    if not results:
+        return {}
+    if len(results) == 1:
+        return results[0]
         
+    merged = dict(results[0])
+    list_keys = ["observed_fabrics", "observed_techniques", "color_palette", "occasion_suitability", "styling_dna"]
+    for k in list_keys:
+        items = []
+        seen = set()
+        for r in results:
+            val = r.get(k, [])
+            if isinstance(val, list):
+                for item in val:
+                    key = json.dumps(item, sort_keys=True) if isinstance(item, dict) else str(item).lower()
+                    if key not in seen:
+                        seen.add(key)
+                        items.append(item)
+        merged[k] = items
+
+    str_keys = ["surface_texture", "drape_behavior", "visual_weight", "weight_estimate", "styling_observations", "confidence_notes"]
+    for k in str_keys:
+        best = ""
+        for r in results:
+            val = str(r.get(k, "")).strip()
+            if len(val) > len(best):
+                best = val
+        merged[k] = best
+
+    return merged
+
+
+def _extract_single_url(client, url: str, prompt_text: str, model_config: dict):
+    content = [
+        {"type": "text", "text": prompt_text},
+        {"type": "image_url", "image_url": {"url": url}}
+    ]
     kwargs = {
         "model": model_config["model"],
         "messages": [{"role": "user", "content": content}],
         "max_tokens": 1500,
         "temperature": 0.1
     }
-    
     if model_config.get("json_mode"):
         kwargs["response_format"] = {"type": "json_object"}
-        
+
     for attempt in range(2):
         try:
             response = client.chat.completions.create(**kwargs)
-            
             usage = response.usage
             tokens = {"input": usage.prompt_tokens, "output": usage.completion_tokens}
-            
             raw_text = response.choices[0].message.content or ""
             if "```json" in raw_text:
                 raw_text = raw_text.split("```json")[1].split("```")[0]
             elif "```" in raw_text:
                 raw_text = raw_text.split("```")[1].split("```")[0]
-                
-            try:
-                data = json.loads(raw_text.strip())
-                return data, tokens
-            except json.JSONDecodeError as je:
-                print(f"JSON Decode Error for {model_config['model']}. Raw text was: {repr(raw_text)}")
-                raise je
+            data = json.loads(raw_text.strip())
+            return data, tokens
         except Exception as e:
-            print(f"Vision extraction failed (attempt {attempt + 1}) for {model_config['model']}: {e}")
             if attempt == 0:
-                time.sleep(5)
+                time.sleep(2)
             else:
                 return None, {"input": 0, "output": 0}
+    return None, {"input": 0, "output": 0}
+
+
+def extract_vision(image_urls: list, model_config: dict, db_refs: dict):
+    """
+    Extracts structured vision data from up to 3 image URLs using the specified model.
+    Runs individual vision calls per image angle and reconciles/merges results.
+    """
+    client = get_client(model_config["provider"])
+    prompt_text = build_vision_prompt(db_refs)
+    
+    # Cap at 3 images max to avoid token explosion
+    target_urls = image_urls[:3] if image_urls else []
+    if not target_urls:
+        return None, {"input": 0, "output": 0}
+
+    results = []
+    total_tokens = {"input": 0, "output": 0}
+    for url in target_urls:
+        data, tokens = _extract_single_url(client, url, prompt_text, model_config)
+        total_tokens["input"] += tokens.get("input", 0)
+        total_tokens["output"] += tokens.get("output", 0)
+        if data and isinstance(data, dict):
+            results.append(data)
+
+    if not results:
+        return None, total_tokens
+
+    merged_data = _merge_vision_results(results)
+    return merged_data, total_tokens
