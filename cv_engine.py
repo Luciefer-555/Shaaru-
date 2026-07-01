@@ -512,8 +512,95 @@ def _batch_localize_bboxes(client, items: list, image_b64: str) -> list:
         return items
 
     except Exception as e:
-        log.warning(f"[CV] Batch bbox localization failed: {e}")
         return items
+
+
+_COMBO_PROMPT = """You are Riley — SHAARU's AI stylist. Devil Wears Prada confidence, warm best friend energy.
+
+The user just scanned these items in a store:
+{items_block}
+
+Generate 2-3 real outfit combinations using subsets of these items.
+For each combo, identify what pieces are missing to complete the look,
+and describe exactly what the user should look for in the store.
+
+Return ONLY valid JSON — no markdown, no explanation:
+{{
+  "combos": [
+    {{
+      "id": "combo_1",
+      "name": "<2-3 word evocative name>",
+      "vibe": "<one-line mood — e.g. 'off-duty editorial with a downtown edge'>",
+      "items_used": ["<item_id>", "<item_id>"],
+      "directions": "<2-3 sentences: how to layer, what to tuck, how to wear the bag, what to leave undone>",
+      "missing": [
+        {{
+          "role": "<bottom / top / footwear / outerwear / accessory>",
+          "find": "<specific description: silhouette, fabric, color, key details — not vague, not generic>"
+        }}
+      ]
+    }}
+  ]
+}}
+
+Rules:
+- item IDs must match exactly from the list above
+- missing[] is empty [] if the combo is complete with what was scanned
+- find must be specific: not 'find pants' but 'straight-leg black twill trousers,
+  flat front, clean hem, no cargo pockets — the kind that work with both sneakers and loafers'
+- directions must mention actual item labels by name
+- directions must ONLY reference items whose id appears in items_used for that combo.
+  Never mention, imply, or describe any item not in items_used — not even vaguely
+  ("a blouse", "the skirt you'll find", "a simple top"). If a piece is needed but
+  not scanned, it goes in missing[] only, never in directions.
+- directions must commit to scanned items exactly as they are — never suggest
+  swapping, replacing, or finding a different version of a piece the user already has
+- combos must be genuinely wearable together — not just random groupings
+- before writing directions, mentally check: is every item I mention in items_used?
+  If not, move it to missing[] or remove it entirely
+- if only tops/outerwear scanned with no bottoms, every combo needs a missing bottom
+- vibe must be specific to Indian Gen Z sensibility — reference real aesthetics"""
+
+
+def generate_outfit_combinations(items: list) -> list:
+    """
+    Generate 2-3 outfit combinations from detected scan items.
+    Uses Riley's LLM to reason about what works together and
+    what pieces are missing, with specific find-it descriptions.
+    """
+    if not items or len(items) < 2:
+        return []
+
+    items_block = "\n".join(
+        f"  - id: {item.get('id', '?')} | {item.get('label', '?')} "
+        f"({item.get('category', '?')}, {item.get('color', '?')})"
+        for item in items
+    )
+    prompt = _COMBO_PROMPT.format(items_block=items_block)
+
+    try:
+        from shaaru_retry import nvidia_call
+        client = _get_client()
+        def _call_combos():
+            return client.chat.completions.create(
+                model="meta/llama-3.1-70b-instruct",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1200,
+                temperature=0.7,
+            )
+        raw = nvidia_call(_call_combos)
+        content = raw.choices[0].message.content or ""
+        parsed = _parse_scan_json(content)
+
+        if not parsed or "combos" not in parsed:
+            log.warning(f"[CV COMBOS] Bad parse: {content[:200]}")
+            return []
+
+        return parsed["combos"]
+    except Exception as e:
+        log.warning(f"[CV COMBOS] Generation failed: {e}")
+        return []
+
 
 
 async def _call_model_for_scan(client, model_name: str, messages: list, is_json_object: bool = False) -> Optional[dict]:
@@ -742,6 +829,16 @@ def scan_frame(image_b64: str) -> dict:
         if conf < 0.6 and "guidance" not in item:
             item["guidance"] = "move_closer"
 
+    # ── Proactive outfit combinations for live mall scenario ─────
+    wearable_cats = ("top", "bottom", "outerwear", "footwear", "dress", "set")
+    wearable_items = [i for i in items if i.get("category", "").lower() in wearable_cats]
+    import concurrent.futures
+    combos_future = None
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    if len(wearable_items) >= 2:
+        log.info(f"[CV] Proactively generating outfit combinations for {len(wearable_items)} wearable items")
+        combos_future = pool.submit(generate_outfit_combinations, items)
+
     # ── Supervision Annotation ──────────────────────────────────
     try:
         import supervision as sv
@@ -816,6 +913,18 @@ def scan_frame(image_b64: str) -> dict:
         log.error(f"[CV] Supervision annotation failed: {e}")
         data["annotated_frame_b64"] = ""
         data["pixel_boxes"] = []
+
+    if combos_future:
+        try:
+            data["combos"] = combos_future.result(timeout=10.0)
+        except Exception as e:
+            log.warning(f"[CV] Proactive combo generation failed/timed out: {e}")
+            data["combos"] = []
+        finally:
+            pool.shutdown(wait=False)
+    else:
+        data["combos"] = []
+        pool.shutdown(wait=False)
 
     data["items"] = items
     return data
