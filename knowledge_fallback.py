@@ -173,7 +173,10 @@ def resolve_fashion_knowledge(query: str, entity_type: str = "general", user_id:
             # Check MongoDB collections for pre-harvested knowledge
             coll_name = "products" if entity_type in ("brand", "designer") else ("trends" if entity_type in ("aesthetic", "vibe") else "fabrics")
             if coll_name in db.list_collection_names():
-                found = list(db[coll_name].find({"$text": {"$search": query}}, {"_id": 0}).limit(3))
+                try:
+                    found = list(db[coll_name].find({"$text": {"$search": query}}, {"_id": 0}).limit(3))
+                except Exception:
+                    found = list(db[coll_name].find({"$or": [{"name": {"$regex": query, "$options": "i"}}, {"description": {"$regex": query, "$options": "i"}}]}, {"_id": 0}).limit(3))
                 if found:
                     extracted = []
                     for item in found:
