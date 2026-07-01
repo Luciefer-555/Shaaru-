@@ -314,22 +314,53 @@ def _localize_missing_bboxes(client, items: list, image_b64: str) -> list:
     return fixed
 
 
+def _compute_iou(b1: dict, b2: dict) -> float:
+    x1 = max(b1.get("x", 0.0), b2.get("x", 0.0))
+    y1 = max(b1.get("y", 0.0), b2.get("y", 0.0))
+    x2 = min(b1.get("x", 0.0) + b1.get("w", 0.0), b2.get("x", 0.0) + b2.get("w", 0.0))
+    y2 = min(b1.get("y", 0.0) + b1.get("h", 0.0), b2.get("y", 0.0) + b2.get("h", 0.0))
+    
+    inter_w = max(0.0, x2 - x1)
+    inter_h = max(0.0, y2 - y1)
+    inter_area = inter_w * inter_h
+    
+    area1 = max(0.0, b1.get("w", 0.0) * b1.get("h", 0.0))
+    area2 = max(0.0, b2.get("w", 0.0) * b2.get("h", 0.0))
+    union_area = area1 + area2 - inter_area
+    if union_area <= 0:
+        return 1.0 if (b1.get("x") == b2.get("x") and b1.get("y") == b2.get("y")) else 0.0
+    return inter_area / union_area
+
+
 def _dedup_items(items: list) -> list:
     """
-    Remove duplicate detections — same label = same item detected twice.
+    Remove duplicate detections — same label + spatial overlap (IoU > 0.4 or close centers).
+    Preserves distinct items sharing the same label if they occupy different grid cells/bboxes.
     Renumbers item IDs after dedup to keep them sequential.
     Logs every removal.
     """
-    seen: dict[str, int] = {}   # label_key -> first index kept
     deduped: list = []
     for item in items:
         key = item.get("label", "").lower().strip()
-        if key not in seen:
-            seen[key] = len(deduped)
+        bbox = item.get("bbox", {})
+        
+        is_dupe = False
+        for kept in deduped:
+            kept_key = kept.get("label", "").lower().strip()
+            if key == kept_key:
+                kept_bbox = kept.get("bbox", {})
+                iou = _compute_iou(bbox, kept_bbox)
+                cx1, cy1 = bbox.get("x", 0) + bbox.get("w", 0)/2, bbox.get("y", 0) + bbox.get("h", 0)/2
+                cx2, cy2 = kept_bbox.get("x", 0) + kept_bbox.get("w", 0)/2, kept_bbox.get("y", 0) + kept_bbox.get("h", 0)/2
+                dist = ((cx1 - cx2)**2 + (cy1 - cy2)**2)**0.5
+                if iou > 0.4 or dist < 0.12 or (bbox.get("w", 0) == 0 and kept_bbox.get("w", 0) == 0):
+                    is_dupe = True
+                    break
+        if not is_dupe:
             deduped.append(item)
         else:
-            log.info(f"[CV] Dedup: dropped duplicate '{item.get('label')}'")
-    # Renumber IDs
+            log.info(f"[CV] Dedup: dropped overlapping duplicate '{item.get('label')}'")
+            
     for i, item in enumerate(deduped):
         item["id"] = f"item_{i + 1}"
     return deduped
@@ -638,11 +669,15 @@ def scan_frame(image_b64: str) -> dict:
     items = data.get("items", [])
     frame_quality = data.get("frame_quality", "good")
 
+    # ── Batch grid-based bbox localization first ─────────────────
+    # Run before dedup so distinct items sharing a label (e.g. two black t-shirts)
+    # can be distinguished by their spatial grid locations / bounding boxes.
+    if items:
+        log.info(f"[CV] Running batch grid localization for {len(items)} items")
+        items = _batch_localize_bboxes(client, items, image_b64)
+        data["items"] = items
+
     # ── Dedup first, then guard ──────────────────────────────────
-    # Dedup removes same-label pairs (two shoes on shelf = one entry).
-    # Guard only fires after dedup — 3+ identical labels post-dedup
-    # means the model is genuinely stuck in a loop, not just
-    # counting both shoes separately.
     items = _dedup_items(items)
     data["items"] = items
 
@@ -656,33 +691,21 @@ def scan_frame(image_b64: str) -> dict:
             f"[CV] Structural hallucination post-dedup: one label appears "
             f"{max_dupes}x across {len(items)} items. Falling back."
         )
-        # Don't return poor — let 90b fallback handle it if Nemotron looped
         items = []
         data["items"] = []
         data["frame_quality"] = "poor"
         data["guidance"] = "Move closer to the items — Riley couldn't read this frame clearly."
-    # ── End guard ────────────────────────────────────────────────
 
-    # If frame is poor, strip items per spec
     if frame_quality == "poor":
         data["items"] = []
         if "guidance" not in data:
             data["guidance"] = "move closer to the rack"
         return data
 
-    # Inject per-item guidance for low-confidence items
     for item in items:
         conf = item.get("confidence", 1.0)
         if conf < 0.6 and "guidance" not in item:
-            item["guidance"] = "move_closer"  # safe default
-
-    # ── Batch grid-based bbox localization ──────────────────────
-    # Always runs — LLaMA vision can't reliably return float coords,
-    # so we classify into a 4x3 grid and convert to bbox in code.
-    if items:
-        log.info(f"[CV] Running batch grid localization for {len(items)} items")
-        items = _batch_localize_bboxes(client, items, image_b64)
-        data["items"] = items
+            item["guidance"] = "move_closer"
 
     # ── Supervision Annotation ──────────────────────────────────
     try:
