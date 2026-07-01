@@ -20,6 +20,8 @@ from typing import Optional
 from dotenv import load_dotenv
 load_dotenv()
 
+from shaaru_brain import _get_client
+
 log = logging.getLogger("shaaru.cv")
 
 # ─────────────────────────────────────────────────────────────────
@@ -519,7 +521,7 @@ _COMBO_PROMPT = """You are Riley — SHAARU's AI stylist. Devil Wears Prada conf
 
 The user just scanned these items in a store:
 {items_block}
-
+{user_context}
 Generate 2-3 real outfit combinations using subsets of these items.
 For each combo, identify what pieces are missing to complete the look,
 and describe exactly what the user should look for in the store.
@@ -536,7 +538,13 @@ Return ONLY valid JSON — no markdown, no explanation:
       "missing": [
         {{
           "role": "<bottom / top / footwear / outerwear / accessory>",
-          "find": "<specific description: silhouette, fabric, color, key details — not vague, not generic>"
+          "find": "<specific description: silhouette, fabric, color, key details>",
+          "hunt_line": "<direct spoken instruction Shaaru says out loud telling the user exactly what to go find right now in a conversational bestie tone — e.g. 'Go find me some black slim-fit formal trousers — flat front, clean hem.'>",
+          "alternatives": [
+            "<1st quick alternative if primary isn't available, plain spoken style>",
+            "<2nd quick alternative if primary isn't available, plain spoken style>"
+          ],
+          "scan_prompt": "<short question asking if user is already wearing the piece — e.g. 'Actually wait — what are you wearing on your bottom half right now? Show me and I'll tell you if it works.' ALWAYS present if role is bottom, top, or footwear>"
         }}
       ]
     }}
@@ -548,6 +556,9 @@ Rules:
 - missing[] is empty [] if the combo is complete with what was scanned
 - find must be specific: not 'find pants' but 'straight-leg black twill trousers,
   flat front, clean hem, no cargo pockets — the kind that work with both sneakers and loafers'
+- hunt_line must be short, direct, conversational like a stylist speaking in your ear telling you what to hunt for right now
+- alternatives must provide 2 quick plain-spoken backup options
+- scan_prompt must ALWAYS be present when role is bottom, top, footwear, outerwear, or dress — ask if they have it on so they can show the camera
 - directions must mention actual item labels by name
 - directions must ONLY reference items whose id appears in items_used for that combo.
   Never mention, imply, or describe any item not in items_used — not even vaguely
@@ -562,44 +573,115 @@ Rules:
 - vibe must be specific to Indian Gen Z sensibility — reference real aesthetics"""
 
 
-def generate_outfit_combinations(items: list) -> list:
+def generate_outfit_combinations(
+    items: list = None,
+    detected_items: list = None,
+    aesthetic_prompt: str = None,
+    user_profile: dict = None,
+) -> list:
     """
     Generate 2-3 outfit combinations from detected scan items.
     Uses Riley's LLM to reason about what works together and
     what pieces are missing, with specific find-it descriptions.
     """
-    if not items or len(items) < 2:
+    scan_items = detected_items if detected_items is not None else items
+    if not scan_items or len(scan_items) < 2:
         return []
+
+    for idx, item in enumerate(scan_items, start=1):
+        if not item.get("id") or item.get("id") == "?":
+            item["id"] = f"item_{idx}"
 
     items_block = "\n".join(
         f"  - id: {item.get('id', '?')} | {item.get('label', '?')} "
         f"({item.get('category', '?')}, {item.get('color', '?')})"
-        for item in items
+        for item in scan_items
     )
-    prompt = _COMBO_PROMPT.format(items_block=items_block)
+
+    context_lines = []
+    if aesthetic_prompt:
+        context_lines.append(f"Desired aesthetic/occasion: {aesthetic_prompt}")
+    if user_profile:
+        body = user_profile.get("body_type") or user_profile.get("body")
+        city = user_profile.get("city")
+        if body:
+            context_lines.append(f"User body type: {body}")
+        if city:
+            context_lines.append(f"User location: {city}")
+    user_context = ("\nUser Context:\n" + "\n".join(f"- {line}" for line in context_lines) + "\n") if context_lines else ""
+
+    prompt = _COMBO_PROMPT.format(items_block=items_block, user_context=user_context)
 
     try:
         from shaaru_retry import nvidia_call
         client = _get_client()
-        def _call_combos():
-            return client.chat.completions.create(
-                model="meta/llama-3.1-70b-instruct",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1200,
-                temperature=0.7,
-            )
-        raw = nvidia_call(_call_combos)
-        content = raw.choices[0].message.content or ""
+        raw = nvidia_call(
+            client=client,
+            model="meta/llama-3.1-70b-instruct",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1500,
+            temperature=0.7,
+        )
+        content = raw if isinstance(raw, str) else (raw.choices[0].message.content or "")
         parsed = _parse_scan_json(content)
 
         if not parsed or "combos" not in parsed:
             log.warning(f"[CV COMBOS] Bad parse: {content[:200]}")
             return []
 
-        return parsed["combos"]
+        combos = parsed["combos"]
+        for combo in combos:
+            missing_list = combo.get("missing", [])
+            for m in missing_list:
+                role = m.get("role", "").lower()
+                find_txt = m.get("find", "")
+                hunt_txt = m.get("hunt_line", "")
+                if not hunt_txt and find_txt:
+                    m["hunt_line"] = f"Go find me {find_txt}."
+                elif not find_txt and hunt_txt:
+                    m["find"] = hunt_txt
+
+                if "alternatives" not in m or not isinstance(m["alternatives"], list):
+                    m["alternatives"] = [
+                        f"If you can't find that, look for a similar style in {role or 'that category'}",
+                        f"Any clean neutral {role or 'piece'} with good fit works too"
+                    ]
+                elif len(m["alternatives"]) < 2:
+                    m["alternatives"].append(f"Any clean neutral {role or 'piece'} works too")
+
+                if not m.get("scan_prompt") and role in ("bottom", "top", "footwear", "outerwear", "dress"):
+                    m["scan_prompt"] = f"Actually wait — what are you wearing on your {role} right now? Show me and I'll tell you if it works."
+
+        return combos
     except Exception as e:
         log.warning(f"[CV COMBOS] Generation failed: {e}")
         return []
+
+
+def format_combos_for_speech(combos: list) -> str:
+    """
+    Format outfit combos into a natural spoken script for Shaaru TTS.
+    Speaks directions, hunt_lines after describing each combo,
+    and puts scan_prompts at the very end as a closing question to the user.
+    """
+    if not combos:
+        return ""
+    lines = []
+    scan_prompts = []
+    for combo in combos:
+        name = combo.get("name", "Outfit")
+        directions = combo.get("directions", "")
+        lines.append(f"For the {name} look: {directions}")
+        for m in combo.get("missing", []):
+            hunt = m.get("hunt_line") or m.get("find")
+            if hunt:
+                lines.append(hunt)
+            sp = m.get("scan_prompt")
+            if sp and sp not in scan_prompts:
+                scan_prompts.append(sp)
+    if scan_prompts:
+        lines.append(scan_prompts[-1])
+    return " ".join(lines)
 
 
 
@@ -796,6 +878,7 @@ def scan_frame(image_b64: str) -> dict:
     # can be distinguished by their spatial grid locations / bounding boxes.
     if items:
         log.info(f"[CV] Running batch grid localization for {len(items)} items")
+        client = _get_client()
         items = _batch_localize_bboxes(client, items, image_b64)
         data["items"] = items
 

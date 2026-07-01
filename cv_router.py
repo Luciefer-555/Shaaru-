@@ -34,6 +34,9 @@ class AnalyzeRequest(BaseModel):
 class StyleCombosRequest(BaseModel):
     items: list
     user_id: str
+    enable_tts: Optional[bool] = False
+    aesthetic_prompt: Optional[str] = None
+    user_profile: Optional[dict] = None
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -181,8 +184,26 @@ async def cv_style_combos(req: StyleCombosRequest):
     Generate 2-3 outfit combinations from detected scan items.
     Uses Riley's LLM to reason about what works together and
     what pieces are missing, with specific find-it descriptions.
+    Formats active hunt directives and scan prompts for voice TTS.
     """
     if not req.items:
         return {"combos": []}
-    combos = generate_outfit_combinations(req.items)
-    return {"combos": combos}
+    combos = generate_outfit_combinations(
+        detected_items=req.items,
+        aesthetic_prompt=req.aesthetic_prompt,
+        user_profile=req.user_profile,
+    )
+    res = {"combos": combos}
+    try:
+        from cv_engine import format_combos_for_speech
+        spoken_text = format_combos_for_speech(combos)
+        res["spoken_text"] = spoken_text
+        if req.enable_tts and spoken_text:
+            from voice_router import generate_tts_audio
+            audio_b64 = generate_tts_audio(spoken_text)
+            if audio_b64:
+                res["audio_base64"] = audio_b64
+                res["audio_format"] = "mp3"
+    except Exception as e:
+        log.warning(f"[CV COMBOS] Voice formatting failed: {e}")
+    return res
