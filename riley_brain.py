@@ -4,6 +4,7 @@ import os
 import re
 
 from shaaru_brain import _get_db, _get_client
+from shaaru_retry import nvidia_call
 from pipeline.knowledge.graph_query import (
     get_brands_by_vibe,
     get_brands_by_occasion,
@@ -130,6 +131,38 @@ SHAARU_TOOLS = [
         'required': ['vibe']
       }
     }
+  },
+  {
+    'type': 'function',
+    'function': {
+      'name': 'lookup_brand_catalog',
+      'description': 'Search the real Indian brand catalog (57 luxury, high street, and indie designers across 7 categories) by name, aesthetic hint, or category keyword to ground brand recommendations.',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'query': {
+            'type': 'string',
+            'description': 'Brand name, aesthetic keyword, or category (e.g. Raw Mango, minimal, streetwear, bridal)'
+          }
+        },
+        'required': ['query']
+      }
+    }
+  },
+  {
+    'type': 'function',
+    'function': {
+      'name': 'query_fashion_knowledge',
+      'description': 'Query the four-layer fashion knowledge fallback system (Neo4j -> verification -> web search -> model knowledge) for deep information on any brand, designer, fabric, or aesthetic.',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'query': {'type': 'string', 'description': 'The fashion entity name or topic to look up.'},
+          'entity_type': {'type': 'string', 'description': 'One of: brand, designer, fabric, aesthetic, general'}
+        },
+        'required': ['query']
+      }
+    }
   }
 ]
 
@@ -139,27 +172,13 @@ def execute_tool(tool_name: str, arguments: dict, user_id: str) -> str:
     db = _get_db()
     query = arguments.get('query', '')
 
-    # Pull all products — at 13 products this is trivial.
-    # Swap to Atlas $vectorSearch aggregation when catalog exceeds ~1k.
-    all_products = list(db['products'].find(
-        {},
-        {'_id': 0, 'name': 1, 'product_name': 1, 'price': 1, 'pricing': 1,
-         'brand': 1, 'image_url': 1, 'product_url': 1, 'aesthetic': 1,
-         'color': 1, 'category': 1, 'image_embedding': 1}
-    ))
-
     results: list[dict] = []
-
-    # Vector search (primary)
     try:
-        from fashion_clip_embedder import embed_text, find_similar_products
-        query_vector = embed_text(query)
-        if query_vector:
-            results = find_similar_products(query_vector, all_products, top_k=5)
+        from product_embeddings import search_products_semantic
+        results = search_products_semantic(query, limit=5)
     except Exception as e:
         logger.warning(f"Vector search unavailable, using text fallback: {e}")
 
-    # Text search fallback — only if vector search produced nothing
     if not results:
         results = list(db['products'].find(
             {'$text': {'$search': query}},
@@ -226,11 +245,11 @@ def execute_tool(tool_name: str, arguments: dict, user_id: str) -> str:
     with driver.session() as session:
       result = session.run(
         """MATCH (a:Aesthetic) 
-           WHERE toLower(a.name) CONTAINS toLower($query)
-           OR toLower(a.description) CONTAINS toLower($query)
+           WHERE toLower(a.name) CONTAINS toLower($q)
+           OR toLower(a.description) CONTAINS toLower($q)
            RETURN a.name, a.description, a.vibe_tags
            LIMIT $top_k""",
-        query=query, top_k=top_k
+        q=query, top_k=top_k
       )
       aesthetics = [dict(r) for r in result]
     driver.close()
@@ -242,19 +261,52 @@ def execute_tool(tool_name: str, arguments: dict, user_id: str) -> str:
     brands = get_brands_by_vibe(vibe, region)
     return json.dumps({'brands': brands, 'vibe': vibe})
 
+  elif tool_name == 'lookup_brand_catalog':
+    query = arguments.get('query', '').lower()
+    designers_path = os.path.join(os.path.dirname(__file__), 'pipeline', 'config', 'designers.json')
+    try:
+      with open(designers_path, encoding='utf-8') as f:
+        catalog = json.load(f)
+      matches = []
+      for d in catalog:
+        if not d.get('active', True):
+          continue
+        if (query in d.get('name', '').lower() or
+            query in d.get('aesthetic_hint', '').lower() or
+            query in d.get('category', '').lower() or
+            query in d.get('id', '').lower() or
+            query in d.get('region', '').lower()):
+          matches.append(d)
+      if not matches:
+        from knowledge_fallback import resolve_fashion_knowledge
+        fb = resolve_fashion_knowledge(query, 'brand', user_id)
+        if fb.get('results'):
+          return json.dumps({'brands': fb['results'], 'query': query, 'resolved_via': fb.get('source')})
+        matches = catalog[:10]
+      return json.dumps({'brands': matches[:10], 'query': query})
+    except Exception as e:
+      logger.warning(f"Could not read designers.json: {e}")
+      return json.dumps({'error': 'Catalog unavailable', 'query': query})
+
+  elif tool_name == 'query_fashion_knowledge':
+    from knowledge_fallback import resolve_fashion_knowledge
+    query = arguments.get('query', '')
+    entity_type = arguments.get('entity_type', 'general')
+    res = resolve_fashion_knowledge(query, entity_type, user_id)
+    return json.dumps(res, default=str)
+
   return json.dumps({'error': f'Unknown tool: {tool_name}'})
 
-def riley_think(user_message: str, user_id: str, conversation_history: list = None) -> dict:
+def riley_think(user_message: str, user_id: str, conversation_history: list = None, image_base64: str = None) -> dict:
 
   # --- inject live user context ---
   user_context_block = ""
   try:
     db = _get_db()
     if db is not None:
+      lines: list[str] = []
       user = db['users'].find_one({'user_id': user_id}, {'_id': 0})
       if user:
-        lines: list[str] = []
-
         style_dna: dict = user.get('style_dna', {})
         if style_dna:
           top = sorted(style_dna.items(), key=lambda x: x[1], reverse=True)[:3]
@@ -277,9 +329,18 @@ def riley_think(user_message: str, user_id: str, conversation_history: list = No
         if taste.get('color_palette'):
           lines.append(f"Color palette: {', '.join(taste['color_palette'])}")
 
-        if lines:
-          user_context_block = "\n\nUSER CONTEXT — use this to personalize every response:\n" + \
-                               "\n".join(f"- {l}" for l in lines)
+      recent_scans = list(db['scanned_items'].find(
+        {'user_id': user_id},
+        {'_id': 0, 'summary': 1}
+      ).sort('_id', -1).limit(3))
+      if recent_scans:
+        scan_summaries = [s.get('summary') for s in recent_scans if s.get('summary')]
+        if scan_summaries:
+          lines.append("Recent Lens Scans (reference only if relevant to user request): " + "; ".join(scan_summaries))
+
+      if lines:
+        user_context_block = "\n\nUSER CONTEXT — use this to personalize every response:\n" + \
+                             "\n".join(f"- {l}" for l in lines)
   except Exception as e:
     logger.warning(f"Could not load user context for {user_id}: {e}")
   # ---------------------------------
@@ -294,11 +355,46 @@ You have tools available. Use them when needed:
 - get_user_taste_profile: when you need to personalize
 - search_trends: when asked about trends
 - semantic_search: for aesthetic/vibe exploration
+- lookup_brand_catalog: to ground brand/designer references against real Indian designers
 
 CRITICAL RULES:
 - Never call trigger_tailor_flow without confirmed=true
 - Don't over-trigger tools — a compliment is just a compliment, not a search query
 - Plain conversation needs no tool calls
+- Never proactively mention or volunteer past Lens scans unless the user's message refers to the garment, fabric, tailoring, or styling of that item
+
+TAILOR FLOW RULES:
+Before calling trigger_tailor_flow, you MUST have collected:
+1. Garment type (be specific — kurta, co-ord set, blazer, lehenga, etc.)
+2. Occasion (casual daily, festive, wedding, work, party)
+3. Fabric preference or "open to suggestions"
+4. Budget range in INR
+5. Any reference image or vibe description
+
+Ask these naturally across 1-2 messages, not as a numbered list. Sound like a friend, not a form.
+Only once you have all 5, ask for confirmation and then call trigger_tailor_flow.
+Pass the full garment_description as a summary of all 5 points.
+
+NEW USER ONBOARDING RULES:
+If user_context_block shows no name or taste data, this is a new user. Ask exactly these questions, one per message, in this exact order:
+
+1. "What should I call you? and real quick — what are your pronouns? (she/her, he/him, they/them) 😊"
+
+After they answer, extract both name and pronouns from their reply. Then continue with questions 2, 3, 4 as before:
+2. "okay [name]! what does your everyday uniform look like? like what are you actually wearing on a regular day"
+3. "love that. cozy rainy day — what's the fit?"
+4. "okay last one — you're front row at an editorial fashion week show. what are you wearing?"
+
+After they answer question 4, respond with exactly this and nothing else:
+"okay [name] I have one more thing for you — pick everything that feels like your vibe 👇 VIBE_PICKER_READY:[pronouns]"
+For example: "VIBE_PICKER_READY:he/him" or "VIBE_PICKER_READY:she/her" or "VIBE_PICKER_READY:they/them"
+
+RULES:
+- One question per message, never combine
+- Use their name once you have it
+- VIBE_PICKER_READY:[pronouns] must appear at the end of your message after question 4 answer
+- Do not ask anything else during onboarding
+
 - Always respond in SHAARU's warm, direct voice{user_context_block}"""
 
   messages = [{'role': 'system', 'content': SHAARU_SYSTEM}]
@@ -306,12 +402,60 @@ CRITICAL RULES:
   if conversation_history:
     messages.extend(conversation_history[-6:])
   
-  messages.append({'role': 'user', 'content': user_message})
+  if image_base64:
+    messages.append({
+      'role': 'user',
+      'content': [
+        {'type': 'text', 'text': user_message or "What do you think of this?"},
+        {'type': 'image_url', 'image_url': {'url': f"data:image/jpeg;base64,{image_base64}"}}
+      ]
+    })
+  else:
+    messages.append({'role': 'user', 'content': user_message})
 
   client = _get_client()
 
+  # ── Vision path: extract image description, then proceed to tool evaluation ──
+  if image_base64:
+    vision_desc = None
+    try:
+      vision_resp = client.chat.completions.create(
+        model='meta/llama-3.2-90b-vision-instruct',
+        messages=messages,
+        max_tokens=300,
+        temperature=0.7,
+        timeout=25
+      )
+      vision_desc = vision_resp.choices[0].message.content or "love this look! tell me what you want to make ✨"
+    except Exception as e:
+      logger.warning(f"Vision 90b failed, trying 11b: {e}")
+      try:
+        vision_resp = client.chat.completions.create(
+          model='meta/llama-3.2-11b-vision-instruct',
+          messages=messages,
+          max_tokens=300,
+          temperature=0.7,
+          timeout=25
+        )
+        vision_desc = vision_resp.choices[0].message.content or "love this look! tell me what you want to make ✨"
+      except Exception as e2:
+        logger.warning(f"Vision 11b failed: {e2}")
+        return {
+          'reply': "I got your image but had trouble seeing it clearly — describe what catches your eye about it! ✨",
+          'tool_calls': [],
+          'tailor_flow': False,
+          'model': 'vision-error'
+        }
+
+    if vision_desc:
+      user_text = user_message or "What do you think of this?"
+      messages[-1] = {
+        'role': 'user',
+        'content': f"{user_text}\n\n[Attached Image Analysis by Vision Model:\n{vision_desc}]"
+      }
+
   # ── Fast path: skip tool overhead for simple conversational messages ──
-  if not _needs_tools(user_message):
+  if not image_base64 and not _needs_tools(user_message):
     try:
       fast_resp = client.chat.completions.create(
         model='meta/llama-3.3-70b-instruct',
@@ -329,8 +473,8 @@ CRITICAL RULES:
       logger.warning(f"Fast path failed, continuing to full path: {e}")
 
   # TURN 1 — model decides what to do
-  try:
-    response = client.chat.completions.create(
+  def _call_turn1():
+    return client.chat.completions.create(
       model='meta/llama-3.3-70b-instruct',
       messages=messages,
       tools=SHAARU_TOOLS,
@@ -338,6 +482,20 @@ CRITICAL RULES:
       max_tokens=300,
       timeout=25
     )
+  def _fallback_turn1():
+    return client.chat.completions.create(
+      model='meta/llama-3.1-8b-instruct',
+      messages=messages,
+      tools=SHAARU_TOOLS,
+      tool_choice='auto',
+      max_tokens=300,
+      timeout=25
+    )
+  try:
+    try:
+      response = _call_turn1()
+    except Exception:
+      response = _fallback_turn1()
   except Exception as e:
     logger.warning(f"Turn 1 timeout or error: {e}")
     return {
@@ -377,13 +535,25 @@ CRITICAL RULES:
       logger.info(f'[TOOL] {tool_name} called with {arguments}')
 
     # TURN 3 — model writes final reply with tool results
-    try:
-      final_response = client.chat.completions.create(
+    def _call_turn3():
+      return client.chat.completions.create(
         model='meta/llama-3.3-70b-instruct',
         messages=messages,
         max_tokens=600,
         timeout=45
       )
+    def _fallback_turn3():
+      return client.chat.completions.create(
+        model='meta/llama-3.1-8b-instruct',
+        messages=messages,
+        max_tokens=600,
+        timeout=45
+      )
+    try:
+      try:
+        final_response = _call_turn3()
+      except Exception:
+        final_response = _fallback_turn3()
       final_text = final_response.choices[0].message.content
     except Exception as e:
       logger.warning(f"Turn 3 timeout or error: {e}")
