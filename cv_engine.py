@@ -17,6 +17,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from dotenv import load_dotenv
+load_dotenv()
+
 log = logging.getLogger("shaaru.cv")
 
 # ─────────────────────────────────────────────────────────────────
