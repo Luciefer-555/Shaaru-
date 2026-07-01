@@ -723,39 +723,31 @@ def scan_frame(image_b64: str) -> dict:
 
         if items:
             annotated = scene.copy()
+            import cv2
             all_xyxy = []
             for item in items:
                 b = item.get("bbox", {})
                 x, y = b.get("x", 0.0), b.get("y", 0.0)
                 w, h = b.get("w", 0.0), b.get("h", 0.0)
-                xyxy = np.array([[
-                    x * img_w, y * img_h,
-                    (x + w) * img_w, (y + h) * img_h
-                ]])
-                conf = np.array([item.get("confidence", 1.0)])
-                det = sv.Detections(
-                    xyxy=xyxy,
-                    confidence=conf,
-                    class_id=np.zeros(1, dtype=int)
-                )
-                item_hex = _category_hex(item.get("category", ""))
-                item_color = sv.Color.from_hex(item_hex)
-                annotated = sv.RoundBoxAnnotator(
-                    color=item_color, thickness=2
-                ).annotate(scene=annotated, detections=det)
-                annotated = sv.LabelAnnotator(
-                    color=item_color,
-                    text_color=sv.Color.from_hex("#000000"),
-                    text_scale=0.45,
-                    text_thickness=1,
-                    text_padding=5,
-                    border_radius=4,
-                ).annotate(
-                    scene=annotated,
-                    detections=det,
-                    labels=[f"{item.get('label', 'Unknown')} · {item.get('color', '')}"]
-                )
-                all_xyxy.append(xyxy[0].tolist())
+                x1, y1 = int(x * img_w), int(y * img_h)
+                x2, y2 = int((x + w) * img_w), int((y + h) * img_h)
+                all_xyxy.append([x1, y1, x2, y2])
+
+                # Thin corner-bracket L-marks in #39FF14 green (RGB: 57, 255, 20)
+                green = (57, 255, 20)
+                c_len = max(int(min(w * img_w, h * img_h) * 0.18), 12)
+                # Top-Left
+                cv2.line(annotated, (x1, y1), (x1 + c_len, y1), green, 2)
+                cv2.line(annotated, (x1, y1), (x1, y1 + c_len), green, 2)
+                # Top-Right
+                cv2.line(annotated, (x2, y1), (x2 - c_len, y1), green, 2)
+                cv2.line(annotated, (x2, y1), (x2, y1 + c_len), green, 2)
+                # Bottom-Left
+                cv2.line(annotated, (x1, y2), (x1 + c_len, y2), green, 2)
+                cv2.line(annotated, (x1, y2), (x1, y2 - c_len), green, 2)
+                # Bottom-Right
+                cv2.line(annotated, (x2, y2), (x2 - c_len, y2), green, 2)
+                cv2.line(annotated, (x2, y2), (x2, y2 - c_len), green, 2)
 
             pil_annotated = Image.fromarray(annotated)
             buffer = io.BytesIO()

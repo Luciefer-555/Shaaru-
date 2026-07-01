@@ -79,7 +79,7 @@ function drawBrackets(
 ) {
   const cx = Math.min(w * 0.18, 22);
   const cy = Math.min(h * 0.18, 22);
-  ctx.strokeStyle = color;
+  ctx.strokeStyle = "#39FF14";
   ctx.lineWidth = 2;
   ctx.lineCap = "square";
   ctx.shadowColor = color;
@@ -193,16 +193,16 @@ function drawHUDStatic(
   ctx.fillRect(0, 0, w, 22);
   ctx.fillStyle = "#39FF14";
   ctx.font = 'bold 8px "Courier New", Consolas, monospace';
-  ctx.fillText("SHAARU_SCAN // RESULTS", 8, 14);
-  ctx.fillStyle = "rgba(57,255,20,0.6)";
-  ctx.fillText(new Date().toTimeString().substring(0, 8), w - 58, 14);
+  ctx.fillText(new Date().toTimeString().substring(0, 8), 8, 14);
+  ctx.fillStyle = "#ff2222";
+  ctx.fillText("● LIVE", w - 45, 14);
 
   ctx.fillStyle = "rgba(0,0,0,0.70)";
-  ctx.fillRect(0, h - 20, w, 20);
-  ctx.fillStyle = "rgba(57,255,20,0.6)";
-  ctx.font = '7px "Courier New", Consolas, monospace';
-  ctx.fillText(`ITEMS DETECTED: ${count}`, 8, h - 7);
-  ctx.fillText("TAP ITEM TO ANALYZE →", w / 2 - 58, h - 7);
+  ctx.fillRect(0, h - 22, w, 22);
+  ctx.fillStyle = "#39FF14";
+  ctx.font = '7.5px "Courier New", Consolas, monospace';
+  const msg = "Shaaru can see and hear you";
+  ctx.fillText(msg, (w - ctx.measureText(msg).width) / 2, h - 8);
 
   const S = 16;
   ctx.strokeStyle = "rgba(57,255,20,0.32)";
