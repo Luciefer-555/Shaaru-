@@ -911,6 +911,135 @@ def get_consensus_tracker(user_id: str) -> TemporalConsensus:
     return _consensus_trackers[user_id]
 
 
+_RILEY_COLOR_VOCAB = {
+    "off-black": (26, 26, 26),
+    "black": (10, 10, 10),
+    "charcoal": (50, 55, 60),
+    "slate grey": (112, 128, 144),
+    "light grey": (211, 211, 211),
+    "off-white": (245, 245, 240),
+    "cream": (232, 228, 217),
+    "white": (255, 255, 255),
+    "beige": (245, 245, 220),
+    "camel": (193, 154, 107),
+    "taupe": (72, 60, 50),
+    "khaki": (195, 176, 145),
+    "olive": (128, 128, 0),
+    "sage green": (158, 178, 150),
+    "forest green": (34, 139, 34),
+    "deep navy": (43, 58, 74),
+    "indigo": (75, 0, 130),
+    "light indigo": (130, 150, 200),
+    "cobalt blue": (0, 71, 171),
+    "sky blue": (135, 206, 235),
+    "burgundy": (128, 0, 32),
+    "maroon": (128, 0, 0),
+    "rust": (183, 65, 14),
+    "terracotta": (226, 114, 91),
+    "mustard": (255, 219, 88),
+    "dusty rose": (220, 174, 150),
+    "lavender": (230, 230, 250),
+    "plum": (142, 69, 133),
+    "coral": (255, 127, 80)
+}
+
+def _map_rgb_to_vocabulary(rgb: tuple) -> str:
+    r, g, b = rgb
+    best_color = "black"
+    min_dist = float("inf")
+    for name, (cr, cg, cb) in _RILEY_COLOR_VOCAB.items():
+        dist = ((r - cr)**2 + (g - cg)**2 + (b - cb)**2)**0.5
+        if dist < min_dist:
+            min_dist = dist
+            best_color = name
+    return best_color
+
+
+def segment_garments(image_b64: str, items: list) -> list:
+    import cv2
+    import numpy as np
+    import base64
+    
+    if not items:
+        return items
+        
+    try:
+        img_bytes = base64.b64decode(image_b64)
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        if img is None:
+            return items
+    except Exception as e:
+        log.warning(f"[SEGMENTATION] Image decode error: {e}")
+        return items
+        
+    img_h, img_w = img.shape[:2]
+    segmented_items = []
+    
+    for item in items:
+        bbox = item.get("bbox", {})
+        if not isinstance(bbox, dict) or "w" not in bbox or "h" not in bbox:
+            segmented_items.append(item)
+            continue
+            
+        x = max(0, int(bbox.get("x", 0) * img_w))
+        y = max(0, int(bbox.get("y", 0) * img_h))
+        w = min(img_w - x, int(bbox.get("w", 0) * img_w))
+        h = min(img_h - y, int(bbox.get("h", 0) * img_h))
+        
+        if w <= 10 or h <= 10:
+            segmented_items.append(item)
+            continue
+            
+        crop = img[y:y+h, x:x+w]
+        
+        try:
+            mask = np.zeros(crop.shape[:2], np.uint8)
+            bgdModel = np.zeros((1, 65), np.float64)
+            fgdModel = np.zeros((1, 65), np.float64)
+            
+            margin_x = max(1, int(w * 0.08))
+            margin_y = max(1, int(h * 0.08))
+            rect = (margin_x, margin_y, max(2, w - 2 * margin_x), max(2, h - 2 * margin_y))
+            
+            cv2.grabCut(crop, mask, rect, bgdModel, fgdModel, 3, cv2.GC_INIT_WITH_RECT)
+            fg_mask = np.where((mask == 2) | (mask == 0), 0, 1).astype("uint8")
+            fg_pixels = crop[fg_mask == 1]
+            
+            if len(fg_pixels) < 20:
+                cy1, cy2 = int(h * 0.2), int(h * 0.8)
+                cx1, cx2 = int(w * 0.2), int(w * 0.8)
+                fg_pixels = crop[cy1:cy2, cx1:cx2].reshape(-1, 3)
+            else:
+                fg_pixels = fg_pixels.reshape(-1, 3)
+                
+            if len(fg_pixels) < 5:
+                segmented_items.append(item)
+                continue
+                
+            pixels = np.float32(fg_pixels)
+            k = min(3, len(pixels))
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+            _, labels, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+            
+            counts = np.bincount(labels.flatten())
+            dominant_bgr = centers[np.argmax(counts)]
+            r, g, b = int(dominant_bgr[2]), int(dominant_bgr[1]), int(dominant_bgr[0])
+            
+            item = {**item, "dominant_color_rgb": [r, g, b]}
+            
+            if float(item.get("confidence", 0.8)) > 0.6:
+                vocab_color = _map_rgb_to_vocabulary((r, g, b))
+                item["color"] = vocab_color
+                
+        except Exception as e:
+            log.warning(f"[SEGMENTATION] Failed on item {item.get('label')}: {e}")
+            
+        segmented_items.append(item)
+        
+    return segmented_items
+
+
 def detect_scene_context(image_b64: str, client=None) -> dict:
     if client is None:
         client = _get_client()
@@ -1099,10 +1228,11 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
 
     data = reconcile_scan_results(res1, res2)
     data["scene_context"] = scene_context
-    data["items"] = enrich_items_with_scene_context(data.get("items", []), scene_context)
+    items = enrich_items_with_scene_context(data.get("items", []), scene_context)
+    items = segment_garments(image_b64, items)
+    data["items"] = items
     if _apply_consensus:
         tracker = get_consensus_tracker(user_id or "default")
-        items = data.get("items", [])
         data["items"] = tracker.update(items)
     return data
 
@@ -1145,6 +1275,7 @@ def scan_frame(image_b64: str, user_id: str = "default") -> dict:
         log.info(f"[CV] Running batch grid localization for {len(items)} items")
         client = _get_client()
         items = _batch_localize_bboxes(client, items, image_b64)
+        items = segment_garments(image_b64, items)
         data["items"] = items
 
     # ── Dedup first, then guard ──────────────────────────────────
