@@ -54,7 +54,7 @@ async def cv_scan(req: ScanRequest):
     """
     ts = datetime.now(timezone.utc).isoformat()
     try:
-        result = scan_frame(req.image_b64)
+        result = scan_frame(req.image_b64, user_id=req.user_id)
         item_count = len(result.get("items", []))
         print(
             f"[CV SCAN] {ts} | user={req.user_id} | "

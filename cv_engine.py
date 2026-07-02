@@ -840,7 +840,71 @@ def preprocess_frame(image_b64: str) -> str:
         return image_b64
 
 
-async def scan_frame_async(image_b64: str) -> dict:
+class TemporalConsensus:
+    def __init__(self, window_size=5, min_confidence=0.7):
+        self.window_size = window_size
+        self.min_confidence = min_confidence
+        self._history = {}  # label -> list of (color, confidence, aesthetic)
+        self._stable = {}   # label -> stabilized attributes
+    
+    def update(self, items: list) -> list:
+        # Add new frame's items to history
+        for item in items:
+            label = item.get('label', '').lower().strip()
+            if not label:
+                continue
+            if label not in self._history:
+                self._history[label] = []
+            self._history[label].append({
+                'color': item.get('color'),
+                'confidence': item.get('confidence', 0.8),
+                'aesthetic': item.get('aesthetic'),
+                'category': item.get('category')
+            })
+            # Keep only last N frames
+            self._history[label] = self._history[label][-self.window_size:]
+        
+        # Build consensus for each tracked item
+        stabilized_items = []
+        for item in items:
+            label = item.get('label', '').lower().strip()
+            history = self._history.get(label, [])
+            if len(history) >= 2:
+                # Most common color across frames wins
+                colors = [h['color'] for h in history if h['color']]
+                if colors:
+                    from collections import Counter
+                    consensus_color = Counter(colors).most_common(1)[0][0]
+                    item = {**item, 'color': consensus_color}
+                # Average confidence
+                avg_conf = sum(h['confidence'] for h in history) / len(history)
+                item = {**item, 'confidence': round(avg_conf, 2)}
+            stabilized_items.append(item)
+        
+        return stabilized_items
+    
+    def should_rescan(self, new_items: list) -> bool:
+        # Only trigger full rescan if scene changed significantly
+        new_labels = set(i.get('label','').lower() for i in new_items)
+        stable_labels = set(self._stable.keys())
+        # Rescan if more than 2 new items appeared or disappeared
+        diff = len(new_labels.symmetric_difference(stable_labels))
+        return diff > 2
+    
+    def reset(self):
+        self._history = {}
+        self._stable = {}
+
+# Initialize a global consensus tracker per user session
+_consensus_trackers = {}  # user_id -> TemporalConsensus
+
+def get_consensus_tracker(user_id: str) -> TemporalConsensus:
+    if user_id not in _consensus_trackers:
+        _consensus_trackers[user_id] = TemporalConsensus(window_size=5)
+    return _consensus_trackers[user_id]
+
+
+async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_consensus: bool = True) -> dict:
     import os
     import asyncio
     from openai import AsyncOpenAI
@@ -889,10 +953,14 @@ async def scan_frame_async(image_b64: str) -> dict:
         res1 = await _call_model_for_scan(async_client, _MODEL_VISION_11B, llama_messages, True)
 
     data = reconcile_scan_results(res1, res2)
+    if _apply_consensus:
+        tracker = get_consensus_tracker(user_id or "default")
+        items = data.get("items", [])
+        data["items"] = tracker.update(items)
     return data
 
 
-def scan_frame(image_b64: str) -> dict:
+def scan_frame(image_b64: str, user_id: str = "default") -> dict:
     """
     Detect all visible garments/accessories in a single image frame.
     Calls two vision models concurrently and reconciles outputs.
@@ -907,9 +975,9 @@ def scan_frame(image_b64: str) -> dict:
     if loop and loop.is_running():
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as pool:
-            data = pool.submit(lambda: asyncio.run(scan_frame_async(image_b64))).result()
+            data = pool.submit(lambda: asyncio.run(scan_frame_async(image_b64, user_id, _apply_consensus=False))).result()
     else:
-        data = asyncio.run(scan_frame_async(image_b64))
+        data = asyncio.run(scan_frame_async(image_b64, user_id, _apply_consensus=False))
 
     if not data:
         return {
@@ -1059,6 +1127,8 @@ def scan_frame(image_b64: str) -> dict:
         data["combos"] = []
         pool.shutdown(wait=False)
 
+    tracker = get_consensus_tracker(user_id or 'default')
+    items = tracker.update(items)
     data["items"] = items
     return data
 
