@@ -955,6 +955,123 @@ def _map_rgb_to_vocabulary(rgb: tuple) -> str:
     return best_color
 
 
+def get_accurate_color(image_b64: str, bbox: dict) -> dict:
+    image_b64 = preprocess_frame(image_b64)
+    import colour
+    import numpy as np
+    if not hasattr(np, "asscalar"):
+        np.asscalar = lambda a: a.item() if hasattr(a, "item") else a
+    import cv2, base64
+    from colormath.color_objects import LabColor
+    from colormath.color_diff import delta_e_cie2000
+
+    FASHION_COLORS = {
+        'black':    [10, 0, 0],
+        'white':    [100, 0, 0],
+        'cream':    [95, 2, 8],
+        'off-white': [92, 1, 5],
+        'ivory':    [97, -1, 6],
+        'grey':     [60, 0, 0],
+        'charcoal': [30, 0, 0],
+        'navy':     [20, 5, -25],
+        'blue':     [40, 10, -40],
+        'light blue': [70, -5, -20],
+        'indigo':   [25, 15, -35],
+        'teal':     [50, -20, -10],
+        'green':    [50, -30, 20],
+        'olive':    [45, -10, 25],
+        'khaki':    [75, -5, 20],
+        'red':      [40, 50, 35],
+        'burgundy': [30, 30, 15],
+        'maroon':   [25, 25, 10],
+        'pink':     [75, 30, 10],
+        'blush':    [80, 15, 8],
+        'orange':   [65, 35, 50],
+        'mustard':  [65, 5, 45],
+        'yellow':   [90, -5, 60],
+        'brown':    [35, 10, 20],
+        'camel':    [65, 10, 25],
+        'tan':      [70, 8, 22],
+        'beige':    [85, 3, 12],
+        'sand':     [80, 3, 15],
+        'white denim': [88, -2, 4],
+        'light wash denim': [72, -3, -12],
+        'mid wash denim': [55, -2, -15],
+        'dark wash denim': [30, -2, -12],
+        'black denim': [15, 0, -3],
+    }
+
+    try:
+        img_bytes = base64.b64decode(image_b64)
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        if img is None:
+            return {'color_name': 'unknown', 'confidence': 0.0, 'delta_e': 0.0, 'dominant_lab': [0.0, 0.0, 0.0]}
+    except Exception:
+        return {'color_name': 'unknown', 'confidence': 0.0, 'delta_e': 0.0, 'dominant_lab': [0.0, 0.0, 0.0]}
+
+    h, w = img.shape[:2]
+    if not isinstance(bbox, dict) or 'w' not in bbox or 'h' not in bbox:
+        return {'color_name': 'unknown', 'confidence': 0.0, 'delta_e': 0.0, 'dominant_lab': [0.0, 0.0, 0.0]}
+
+    x1 = max(0, int(bbox.get('x', 0) * w))
+    y1 = max(0, int(bbox.get('y', 0) * h))
+    x2 = min(w, int((bbox.get('x', 0) + bbox.get('w', 1)) * w))
+    y2 = min(h, int((bbox.get('y', 0) + bbox.get('h', 1)) * h))
+    crop = img[y1:y2, x1:x2]
+    if crop.size == 0 or crop.shape[0] <= 2 or crop.shape[1] <= 2:
+        return {'color_name': 'unknown', 'confidence': 0.0, 'delta_e': 0.0, 'dominant_lab': [0.0, 0.0, 0.0]}
+
+    best_match = 'unknown'
+    best_delta = float('inf')
+    best_lab = [0.0, 0.0, 0.0]
+
+    try:
+        import colorgram
+        from PIL import Image
+        pil_img = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+        extracted = colorgram.extract(pil_img, 4)
+        for c in extracted:
+            if c.proportion < 0.20 and c != extracted[0]:
+                continue
+            r, g, b = c.rgb.r / 255.0, c.rgb.g / 255.0, c.rgb.b / 255.0
+            lab_arr = colour.XYZ_to_Lab(colour.sRGB_to_XYZ(np.array([[[r, g, b]]], dtype=np.float32)))[0, 0]
+            cand_lab = LabColor(float(lab_arr[0]), float(lab_arr[1]), float(lab_arr[2]))
+
+            for cname, cvals in FASHION_COLORS.items():
+                ref_lab = LabColor(float(cvals[0]), float(cvals[1]), float(cvals[2]))
+                d = delta_e_cie2000(cand_lab, ref_lab)
+                if d < best_delta:
+                    best_delta = d
+                    best_match = cname
+                    best_lab = [round(float(v), 2) for v in lab_arr]
+    except Exception:
+        rgb_float = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        lab = colour.XYZ_to_Lab(colour.sRGB_to_XYZ(rgb_float))
+        pixels = lab.reshape(-1, 3).astype(np.float32)
+        if len(pixels) > 5000:
+            idx = np.random.choice(len(pixels), 5000, replace=False)
+            pixels = pixels[idx]
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
+        _, labels, centers = cv2.kmeans(pixels, min(3, len(pixels)), None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+        counts = np.bincount(labels.flatten())
+        dominant_lab = centers[np.argmax(counts)]
+        cand_lab = LabColor(float(dominant_lab[0]), float(dominant_lab[1]), float(dominant_lab[2]))
+        for cname, cvals in FASHION_COLORS.items():
+            ref_lab = LabColor(float(cvals[0]), float(cvals[1]), float(cvals[2]))
+            d = delta_e_cie2000(cand_lab, ref_lab)
+            if d < best_delta:
+                best_delta = d
+                best_match = cname
+                best_lab = [round(float(v), 2) for v in dominant_lab]
+
+    confidence = max(0.0, min(1.0, 1.0 - (best_delta / 30.0)))
+    return {
+        'color_name': best_match,
+        'confidence': round(confidence, 2),
+        'delta_e': round(float(best_delta), 2),
+        'dominant_lab': best_lab
+    }
 def segment_garments(image_b64: str, items: list) -> list:
     import cv2
     import numpy as np
@@ -1028,9 +1145,12 @@ def segment_garments(image_b64: str, items: list) -> list:
             
             item = {**item, "dominant_color_rgb": [r, g, b]}
             
-            if float(item.get("confidence", 0.8)) > 0.6:
-                vocab_color = _map_rgb_to_vocabulary((r, g, b))
-                item["color"] = vocab_color
+            if float(item.get("confidence", 0.8)) > 0.6 and item.get("bbox"):
+                c_info = get_accurate_color(image_b64, item["bbox"])
+                if c_info.get("color_name", "unknown") != "unknown":
+                    item["color"] = c_info["color_name"]
+                    item["color_confidence"] = c_info.get("confidence", 0.0)
+                    item["delta_e"] = c_info.get("delta_e", 0.0)
                 
         except Exception as e:
             log.warning(f"[SEGMENTATION] Failed on item {item.get('label')}: {e}")
@@ -1230,6 +1350,13 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
     data["scene_context"] = scene_context
     items = enrich_items_with_scene_context(data.get("items", []), scene_context)
     items = segment_garments(image_b64, items)
+    for item in items:
+        if float(item.get("confidence", 0.8)) > 0.6 and item.get("bbox"):
+            c_info = get_accurate_color(image_b64, item["bbox"])
+            if c_info.get("color_name", "unknown") != "unknown":
+                item["color"] = c_info["color_name"]
+                item["color_confidence"] = c_info.get("confidence", 0.0)
+                item["delta_e"] = c_info.get("delta_e", 0.0)
     data["items"] = items
     if _apply_consensus:
         tracker = get_consensus_tracker(user_id or "default")
@@ -1307,6 +1434,12 @@ def scan_frame(image_b64: str, user_id: str = "default") -> dict:
         conf = item.get("confidence", 1.0)
         if conf < 0.6 and "guidance" not in item:
             item["guidance"] = "move_closer"
+        elif float(conf) > 0.6 and item.get("bbox"):
+            c_info = get_accurate_color(image_b64, item["bbox"])
+            if c_info.get("color_name", "unknown") != "unknown":
+                item["color"] = c_info["color_name"]
+                item["color_confidence"] = c_info.get("confidence", 0.0)
+                item["delta_e"] = c_info.get("delta_e", 0.0)
 
     # ── Proactive outfit combinations for live mall scenario ─────
     wearable_cats = ("top", "bottom", "outerwear", "footwear", "dress", "set")
