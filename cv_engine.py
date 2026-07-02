@@ -793,10 +793,59 @@ def reconcile_scan_results(data1: Optional[dict], data2: Optional[dict]) -> dict
         "conflict_notes": conflict_notes,
     }
 
+_preprocessed_cache = {}
+
+def preprocess_frame(image_b64: str) -> str:
+    if image_b64 in _preprocessed_cache:
+        return _preprocessed_cache[image_b64]
+    try:
+        import cv2, numpy as np, base64
+        
+        # Decode
+        img_bytes = base64.b64decode(image_b64)
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        if img is None:
+            return image_b64  # fallback to original if decode fails
+        
+        # Step 1: White balance via grey world assumption in LAB space
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB).astype(np.float32)
+        avg_a = np.mean(lab[:, :, 1])
+        avg_b = np.mean(lab[:, :, 2])
+        lab[:, :, 1] -= (avg_a - 128) * (lab[:, :, 0] / 255.0) * 1.1
+        lab[:, :, 2] -= (avg_b - 128) * (lab[:, :, 0] / 255.0) * 1.1
+        lab = np.clip(lab, 0, 255).astype(np.uint8)
+        balanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+        
+        # Step 2: CLAHE contrast enhancement (improves shadow detail on fabric)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        yuv = cv2.cvtColor(balanced, cv2.COLOR_BGR2YUV)
+        yuv[:, :, 0] = clahe.apply(yuv[:, :, 0])
+        enhanced = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR)
+        
+        # Step 3: Mild sharpening kernel
+        kernel = np.array([[0, -0.5, 0], [-0.5, 3, -0.5], [0, -0.5, 0]])
+        sharpened = cv2.filter2D(enhanced, -1, kernel)
+        
+        # Re-encode at high quality
+        _, buf = cv2.imencode('.jpg', sharpened, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        res = base64.b64encode(buf).decode('utf-8')
+        _preprocessed_cache[image_b64] = res
+        _preprocessed_cache[res] = res  # idempotent if passed again
+        if len(_preprocessed_cache) > 20:
+            _preprocessed_cache.clear()
+        return res
+    except Exception as e:
+        log.warning(f"[CV PREPROCESS] Failed: {e}")
+        return image_b64
+
+
 async def scan_frame_async(image_b64: str) -> dict:
     import os
     import asyncio
     from openai import AsyncOpenAI
+
+    image_b64 = preprocess_frame(image_b64)
 
     api_key = os.environ.get("NVIDIA_API_KEY", "")
     base_url = "https://integrate.api.nvidia.com/v1"
@@ -848,6 +897,7 @@ def scan_frame(image_b64: str) -> dict:
     Detect all visible garments/accessories in a single image frame.
     Calls two vision models concurrently and reconciles outputs.
     """
+    image_b64 = preprocess_frame(image_b64)
     import asyncio
     try:
         loop = asyncio.get_running_loop()
