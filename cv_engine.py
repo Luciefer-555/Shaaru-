@@ -592,13 +592,19 @@ def generate_outfit_combinations(
         if not item.get("id") or item.get("id") == "?":
             item["id"] = f"item_{idx}"
 
+    has_worn_items = any(item.get("worn_by_person") is True for item in scan_items)
+    combo_context = "building_on_what_you_are_wearing" if has_worn_items else "full_rack_suggestions"
+
     items_block = "\n".join(
         f"  - id: {item.get('id', '?')} | {item.get('label', '?')} "
         f"({item.get('category', '?')}, {item.get('color', '?')})"
+        f"{' [WORN BY USER RIGHT NOW]' if item.get('worn_by_person') else ' [ON STORE RACK]' if item.get('worn_by_person') is False else ''}"
         for item in scan_items
     )
 
     context_lines = []
+    if has_worn_items:
+        context_lines.append("CRITICAL: The user is currently wearing items marked [WORN BY USER RIGHT NOW]. Prioritize those worn items as the BASE of the outfit combinations, and use store rack items to complete or layer over them.")
     if aesthetic_prompt:
         context_lines.append(f"Desired aesthetic/occasion: {aesthetic_prompt}")
     if user_profile:
@@ -631,6 +637,7 @@ def generate_outfit_combinations(
 
         combos = parsed["combos"]
         for combo in combos:
+            combo["combo_context"] = combo_context
             missing_list = combo.get("missing", [])
             for m in missing_list:
                 role = m.get("role", "").lower()
@@ -904,6 +911,136 @@ def get_consensus_tracker(user_id: str) -> TemporalConsensus:
     return _consensus_trackers[user_id]
 
 
+def detect_scene_context(image_b64: str, client=None) -> dict:
+    if client is None:
+        client = _get_client()
+    
+    prompt = """Analyze this image and answer ONLY in this exact JSON format:
+{
+  "has_person": true/false,
+  "person_in_foreground": true/false,
+  "rack_items_visible": true/false,
+  "scene_type": "person_wearing" | "store_rack" | "mixed" | "single_item",
+  "foreground_focus": "person" | "rack" | "item_closeup"
+}
+
+Rules:
+- has_person: true only if a human body is clearly visible
+- person_in_foreground: true only if the person is the main subject, not background
+- scene_type person_wearing: person is wearing the clothes being analyzed
+- scene_type store_rack: clothes hanging on racks, no person wearing them
+- scene_type mixed: both a person and rack items visible
+- scene_type single_item: one item held up or displayed close range
+No other text. JSON only."""
+
+    try:
+        resp = client.chat.completions.create(
+            model='meta/llama-3.2-11b-vision-instruct',
+            messages=[{
+                'role': 'user',
+                'content': [
+                    {'type': 'image_url', 'image_url': {
+                        'url': f'data:image/jpeg;base64,{image_b64}'
+                    }},
+                    {'type': 'text', 'text': prompt}
+                ]
+            }],
+            max_tokens=150,
+            temperature=0.1
+        )
+        raw = resp.choices[0].message.content.strip()
+        if raw.startswith("```json"):
+            raw = raw[7:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        return json.loads(raw.strip())
+    except Exception as e:
+        log.warning(f"[SCENE CONTEXT] Failed: {e}")
+        return {
+            'has_person': False,
+            'person_in_foreground': False,
+            'rack_items_visible': True,
+            'scene_type': 'store_rack',
+            'foreground_focus': 'rack'
+        }
+
+
+async def _detect_scene_context_async(image_b64: str, async_client) -> dict:
+    prompt = """Analyze this image and answer ONLY in this exact JSON format:
+{
+  "has_person": true/false,
+  "person_in_foreground": true/false,
+  "rack_items_visible": true/false,
+  "scene_type": "person_wearing" | "store_rack" | "mixed" | "single_item",
+  "foreground_focus": "person" | "rack" | "item_closeup"
+}
+
+Rules:
+- has_person: true only if a human body is clearly visible
+- person_in_foreground: true only if the person is the main subject, not background
+- scene_type person_wearing: person is wearing the clothes being analyzed
+- scene_type store_rack: clothes hanging on racks, no person wearing them
+- scene_type mixed: both a person and rack items visible
+- scene_type single_item: one item held up or displayed close range
+No other text. JSON only."""
+
+    try:
+        resp = await async_client.chat.completions.create(
+            model='meta/llama-3.2-11b-vision-instruct',
+            messages=[{
+                'role': 'user',
+                'content': [
+                    {'type': 'image_url', 'image_url': {
+                        'url': f'data:image/jpeg;base64,{image_b64}'
+                    }},
+                    {'type': 'text', 'text': prompt}
+                ]
+            }],
+            max_tokens=150,
+            temperature=0.1
+        )
+        raw = resp.choices[0].message.content.strip()
+        if raw.startswith("```json"):
+            raw = raw[7:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        return json.loads(raw.strip())
+    except Exception as e:
+        log.warning(f"[SCENE CONTEXT ASYNC] Failed: {e}")
+        return {
+            'has_person': False,
+            'person_in_foreground': False,
+            'rack_items_visible': True,
+            'scene_type': 'store_rack',
+            'foreground_focus': 'rack'
+        }
+
+
+def enrich_items_with_scene_context(items: list, scene_context: dict) -> list:
+    scene_type = scene_context.get("scene_type", "store_rack")
+    person_fg = scene_context.get("person_in_foreground", False)
+    
+    enriched = []
+    for item in items:
+        bbox = item.get("bbox", {})
+        y = bbox.get("y", 0.5)
+        
+        if scene_type == "person_wearing":
+            item = {**item, "worn_by_person": True}
+        elif scene_type == "store_rack":
+            item = {**item, "worn_by_person": False}
+        elif scene_type == "mixed":
+            if person_fg and (y < 0.75):
+                item = {**item, "worn_by_person": True}
+            else:
+                item = {**item, "worn_by_person": False}
+        else:
+            item = {**item, "worn_by_person": False}
+            
+        enriched.append(item)
+    return enriched
+
+
 async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_consensus: bool = True) -> dict:
     import os
     import asyncio
@@ -941,18 +1078,28 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
         {"role": "assistant", "content": "{"}
     ]
 
+    task_scene = _detect_scene_context_async(image_b64, async_client)
     task1 = _call_model_for_scan(async_client, _MODEL_NEMOTRON, nemotron_messages, False)
     task2 = _call_model_for_scan(async_client, _MODEL_VISION_90B, llama_messages, True)
 
-    results = await asyncio.gather(task1, task2, return_exceptions=True)
-    res1 = results[0] if isinstance(results[0], dict) else None
-    res2 = results[1] if isinstance(results[1], dict) else None
+    results = await asyncio.gather(task_scene, task1, task2, return_exceptions=True)
+    scene_context = results[0] if isinstance(results[0], dict) else {
+        'has_person': False,
+        'person_in_foreground': False,
+        'rack_items_visible': True,
+        'scene_type': 'store_rack',
+        'foreground_focus': 'rack'
+    }
+    res1 = results[1] if isinstance(results[1], dict) else None
+    res2 = results[2] if isinstance(results[2], dict) else None
 
     if not res1 and not res2:
         log.info("[CV] Both dual models returned None, falling back to 11b vision")
         res1 = await _call_model_for_scan(async_client, _MODEL_VISION_11B, llama_messages, True)
 
     data = reconcile_scan_results(res1, res2)
+    data["scene_context"] = scene_context
+    data["items"] = enrich_items_with_scene_context(data.get("items", []), scene_context)
     if _apply_consensus:
         tracker = get_consensus_tracker(user_id or "default")
         items = data.get("items", [])
