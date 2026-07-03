@@ -8,8 +8,9 @@ Endpoints (mounted at /api/cv):
 
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from cv_engine import scan_frame, analyze_item, generate_outfit_combinations
@@ -207,3 +208,79 @@ async def cv_style_combos(req: StyleCombosRequest):
     except Exception as e:
         log.warning(f"[CV COMBOS] Voice formatting failed: {e}")
     return res
+
+
+@router.post("/touch")
+async def cv_touch(request: Request):
+    try:
+        body = await request.json()
+        item_label = body.get("item_label", "")
+        item_color = body.get("item_color", "")
+        item_category = body.get("item_category", "")
+        item_aesthetic = body.get("item_aesthetic", "")
+        all_items = body.get("all_items", [])
+        user_id = body.get("user_id", "default")
+        
+        if not item_label:
+            return {"comment": None}
+        
+        # Build context of other items in scene
+        others = [i for i in all_items 
+                  if i != item_label]
+        others_str = (", ".join(others[:4]) 
+                     if others else "nothing else visible")
+        
+        # Generate Shaaru's natural comment via Riley
+        from riley_brain import riley_think
+        
+        prompt = (
+            f"[SHAARU LIVE CAMERA — user just touched "
+            f"or pointed at: {item_color} {item_label} "
+            f"({item_category}, {item_aesthetic} vibe). "
+            f"Other items visible in scene: {others_str}. "
+            f"Give ONE natural warm reaction in Shaaru's "
+            f"voice — like a knowledgeable bestie noticing "
+            f"what they picked up. Comment on this specific "
+            f"item and casually suggest one thing that would "
+            f"pair well with it from the visible items or "
+            f"something to look for. Max 20 words. "
+            f"No hashtags, no bullet points, just talk.]"
+        )
+        
+        result = riley_think(
+            user_message=prompt,
+            user_id=user_id
+        )
+        
+        comment = result.get("reply", "")
+        
+        # Trim to under 25 words just in case
+        words = comment.split()
+        if len(words) > 25:
+            comment = " ".join(words[:25]) + "."
+        
+        # Log touch event to MongoDB
+        try:
+            try:
+                from database import get_db
+                db = get_db()
+            except ImportError:
+                from shaaru_brain import _get_db
+                db = _get_db()
+            if db is not None:
+                db["touch_events"].insert_one({
+                    "user_id": user_id,
+                    "item": item_label,
+                    "color": item_color,
+                    "comment": comment,
+                    "timestamp": __import__("time").time()
+                })
+        except Exception:
+            pass  # non-blocking
+        
+        return {"comment": comment, "item": item_label}
+    
+    except Exception as e:
+        print(f"[CV TOUCH] Error: {e}")
+        return {"comment": None, "error": str(e)}
+

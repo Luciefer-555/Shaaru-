@@ -1,8 +1,26 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowUp, Paperclip, Camera, X, FileText } from "lucide-react"
+import VibePicker from '@/components/tailor/VibePicker'
+import { TailorInput } from '@/components/tailor/TailorInput'
+import { CameraScanner } from '@/components/tailor/CameraScanner'
+
+async function fetchWithTimeout(resource: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
+  const { timeout = 90000 } = options as any
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeout)
+  try {
+    const response = await fetch(resource, { ...options, signal: controller.signal })
+    clearTimeout(id)
+    return response
+  } catch (error) {
+    clearTimeout(id)
+    throw error
+  }
+}
 
 // ─── SHAARU LOGO ───────────────────────────────────────
 function ShaaruLogo({ size = 40 }: { size?: number }) {
@@ -27,6 +45,7 @@ interface Message {
   role: "user" | "assistant"
   content: string
   streaming?: boolean
+  image?: string
 }
 
 interface ScannedItem {
@@ -183,124 +202,15 @@ function IdleView({ onSend }: { onSend: (msg: string, img?: string) => void }) {
         transition={{ duration: 0.4, delay: 0.2 }}
         style={{ width: "100%", maxWidth: 680 }}
       >
-        {/* Suggestion pills */}
-        <div style={{
-          display: "flex",
-          gap: 8,
-          justifyContent: "center",
-          marginBottom: 12,
-          flexWrap: "wrap"
-        }}>
-          {[
-            "Make from reference",
-            "Describe a garment",
-            "Repurpose old clothes",
-            "Wedding outfit"
-          ].map(label => (
-            <button
-              key={label}
-              onClick={() => setInput(label.toLowerCase())}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 999,
-                border: "1px solid #333330",
-                backgroundColor: "transparent",
-                color: "#888884",
-                fontSize: 13,
-                cursor: "pointer"
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Input container */}
-        <div
-          onDragOver={e => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={e => {
-            e.preventDefault()
-            setDragging(false)
-            const f = e.dataTransfer.files[0]
-            if (f) handleFile(f)
-          }}
+        <TailorInput
+          onSend={onSend}
+          hideSuggestions={false}
           style={{
-            backgroundColor: "#242422",
-            border: `1px solid ${dragging ? "#8B1A1A" : "#333330"}`,
-            borderRadius: 16,
-            padding: "14px 14px 10px 14px",
-            transition: "border-color 0.2s"
+            backgroundColor: "rgba(255, 255, 255, 0.04)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            borderRadius: 20,
+            backdropFilter: "blur(20px)"
           }}
-        >
-          <textarea
-            ref={textRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="show me what you want to make..."
-            rows={1}
-            style={{
-              width: "100%",
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "#ECECEC",
-              fontSize: 15,
-              resize: "none",
-              fontFamily: "inherit",
-              lineHeight: 1.5,
-              minHeight: 24,
-              boxSizing: "border-box"
-            }}
-          />
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: 8
-          }}>
-            <button
-              onClick={() => fileRef.current?.click()}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "#666663",
-                display: "flex",
-                padding: 4
-              }}
-            >
-              <Paperclip size={18} />
-            </button>
-            <button
-              onClick={send}
-              disabled={!input.trim()}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                border: "none",
-                backgroundColor: input.trim() ? "#8B1A1A" : "#333330",
-                color: "white",
-                cursor: input.trim() ? "pointer" : "default",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background-color 0.2s"
-              }}
-            >
-              <ArrowUp size={16} />
-            </button>
-          </div>
-        </div>
-
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
         />
       </motion.div>
     </div>
@@ -319,7 +229,11 @@ function ChatView({
   onCameraOpen?: () => void
   onTailorFlow?: () => void
 }) {
+  // const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
+  const [showVibePicker, setShowVibePicker] = useState(false)
+  const [userPronouns, setUserPronouns] = useState('she/her')
+  const [userId, setUserId] = useState('')
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [streamContent, setStreamContent] = useState("")
@@ -349,13 +263,14 @@ function ChatView({
     }
   }
 
-  const sendMessage = async (text: string) => {
-    if ((!text.trim() && !file) || loading) return
+  const sendMessage = async (text: string, imageBase64?: string) => {
+    if ((!text.trim() && !imageBase64 && !file) || loading) return
 
     const userMsg: Message = {
       id: Date.now().toString(),
-      role: "user",
-      content: text.trim() || "[Attachment]"
+      role: "user", 
+      content: text.trim() || "[Image]",
+      image: imageBase64 ? `data:image/jpeg;base64,${imageBase64}` : undefined
     }
 
     setMessages(prev => [...prev, userMsg])
@@ -365,13 +280,35 @@ function ChatView({
     setPreviewUrl(null)
 
     try {
-      const res = await fetch("/api/chat/message", {
+      const res = await fetchWithTimeout("/api/chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text.trim(), history: [] })
+        body: JSON.stringify({ 
+          message: text.trim(), 
+          history: [], 
+          user_id: userId || 'demo_user',
+          ...(imageBase64 && { image_base64: imageBase64 })
+        })
       })
       if (!res.ok) throw new Error("Backend unavailable")
       const data = await res.json()
+      if (data.user_id) setUserId(data.user_id)
+      if (data.redirect === '/onboarding') {
+        // onboarding happens in chat — Riley will ask questions
+        // just let the conversation continue, don't redirect
+        // but also don't show "something went wrong"
+        setLoading(false)
+        return
+      }
+      if (data.reply && data.reply.includes('VIBE_PICKER_READY')) {
+        const match = data.reply.match(/VIBE_PICKER_READY:([a-z\/]+)/)
+        if (match && match[1]) {
+          setUserPronouns(match[1])
+        }
+        setShowVibePicker(true)
+        setLoading(false)
+        return
+      }
       const reply = data.reply || "something went wrong"
       if (data.tailor_flow) {
         onTailorFlow?.()
@@ -506,6 +443,11 @@ function ChatView({
                   maxWidth: "75%"
                 }}>
                   {msg.content}
+                  {msg.image && (
+                    <img src={msg.image} alt="attachment" 
+                      style={{ maxWidth: 200, borderRadius: 12, marginTop: 8, display: "block" }} 
+                    />
+                  )}
                 </div>
               ) : (
                 <div style={{
@@ -527,6 +469,21 @@ function ChatView({
               )}
             </div>
           ))}
+
+          {showVibePicker && (
+            <VibePicker
+              pronouns={userPronouns}
+              userId={userId || 'demo_user'}
+              onComplete={(selected) => {
+                setShowVibePicker(false)
+                setMessages(prev => [...prev, {
+                  id: Date.now().toString(),
+                  role: 'assistant' as const,
+                  content: `okay I see you 👀 ${selected.length} vibes locked in. I know exactly who you are now — let's get into it 🔥`
+                }])
+              }}
+            />
+          )}
 
           {/* Streaming message */}
           {streamId && (
@@ -579,164 +536,23 @@ function ChatView({
         left: 0,
         right: 0,
         padding: "12px 16px 20px",
-        background: "linear-gradient(to top, #1A1A1A 80%, transparent)"
+        background: "linear-gradient(to top, #1A1A1A 80%, transparent)",
+        display: "flex",
+        justifyContent: "center"
       }}>
-        <div style={{
-          maxWidth: 680,
-          margin: "0 auto",
-          backgroundColor: "#242422",
-          border: `1px solid ${isFocused ? "#4A4A48" : "#333330"}`,
-          borderRadius: 16,
-          padding: "12px 14px 10px 14px",
-          transition: "border-color 0.2s ease"
-        }}>
-          {file && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2 }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 8,
-                padding: "8px 12px",
-                backgroundColor: "#1A1A1A",
-                borderRadius: 12,
-                width: "max-content",
-                position: "relative"
-              }}
-            >
-              {previewUrl ? (
-                <img src={previewUrl} alt="preview" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover" }} />
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#ECECEC" }}>
-                  <FileText size={20} color="#888884" />
-                  <span style={{ fontSize: 13, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {file.name}
-                  </span>
-                </div>
-              )}
-              <button
-                onClick={() => { setFile(null); setPreviewUrl(null) }}
-                style={{
-                  position: "absolute",
-                  top: -6,
-                  right: -6,
-                  width: 20,
-                  height: 20,
-                  borderRadius: "50%",
-                  backgroundColor: "#333330",
-                  color: "#ECECEC",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer"
-                }}
-              >
-                <X size={12} />
-              </button>
-            </motion.div>
-          )}
-
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-            <div style={{ display: "flex", gap: 4, paddingBottom: 4 }}>
-              <button
-                onClick={() => fileRef.current?.click()}
-                onMouseEnter={e => e.currentTarget.style.color = "#ECECEC"}
-                onMouseLeave={e => e.currentTarget.style.color = "#666663"}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#666663",
-                  display: "flex",
-                  padding: 4,
-                  transition: "color 0.2s"
-                }}
-              >
-                <Paperclip size={20} />
-              </button>
-              <button
-                onClick={onCameraOpen}
-                onMouseEnter={e => e.currentTarget.style.color = "#ECECEC"}
-                onMouseLeave={e => e.currentTarget.style.color = "#666663"}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#666663",
-                  display: "flex",
-                  padding: 4,
-                  transition: "color 0.2s"
-                }}
-              >
-                <Camera size={20} />
-              </button>
-            </div>
-
-            <textarea
-              ref={textRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              placeholder="message SHAARU..."
-              rows={1}
-              disabled={loading}
-              style={{
-                flex: 1,
-                background: "transparent",
-                border: "none",
-                outline: "none",
-                color: "#ECECEC",
-                fontSize: 15,
-                resize: "none",
-                fontFamily: "inherit",
-                lineHeight: 1.5,
-                minHeight: 24,
-                maxHeight: 160,
-                overflowY: "auto",
-                boxSizing: "border-box",
-                padding: "4px 0",
-                transition: "height 0.15s ease"
-              }}
-            />
-
-            <div style={{ paddingBottom: 2 }}>
-              <button
-                onClick={() => sendMessage(input)}
-                disabled={(!input.trim() && !file) || loading}
-                onMouseDown={e => e.currentTarget.style.transform = "scale(0.96)"}
-                onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 12,
-                  border: "none",
-                  backgroundColor: (input.trim() || file) && !loading ? "#8B1A1A" : "#333330",
-                  color: "white",
-                  cursor: (input.trim() || file) && !loading ? "pointer" : "default",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "background-color 0.2s, transform 0.1s"
-                }}
-              >
-                <ArrowUp size={16} />
-              </button>
-            </div>
-          </div>
-
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*,application/pdf,.doc,.docx"
-            style={{ display: "none" }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+        <div style={{ width: "100%", maxWidth: 680 }}>
+          <TailorInput
+            onSend={(msg, img) => sendMessage(msg, img)}
+            disabled={loading}
+            hideSuggestions={true}
+            placeholder="message SHAARU..."
+            onCameraOpen={onCameraOpen}
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.04)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 20,
+              backdropFilter: "blur(20px)"
+            }}
           />
         </div>
       </div>
@@ -826,7 +642,7 @@ function CameraView({
     setPhase("scanning")
     setError(null)
     try {
-      const res = await fetch("/api/cv/scan", {
+      const res = await fetchWithTimeout("/api/cv/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image_b64: b64, user_id: "guest" }),
@@ -884,7 +700,7 @@ function CameraView({
     }
 
     try {
-      const res = await fetch("/api/cv/analyze", {
+      const res = await fetchWithTimeout("/api/cv/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1110,7 +926,7 @@ function BriefRow({ label, value }: { label: string; value: string }) {
 }
 
 // ─── BRIEF VIEW ────────────────────────────────────────
-function BriefView({ brief, onBack }: { brief: AnalyzeResult; onBack: () => void }) {
+function BriefView({ brief, onBack, onContinueToChat }: { brief: AnalyzeResult; onBack: () => void; onContinueToChat?: () => void }) {
   const ga = brief.garment_analysis
   const fi = brief.fabric_intelligence
 
@@ -1235,13 +1051,13 @@ function BriefView({ brief, onBack }: { brief: AnalyzeResult; onBack: () => void
         )}
 
         {/* CTA */}
-        <button style={{
+        <button onClick={onContinueToChat || onBack} style={{
           width: "100%", padding: "14px", borderRadius: 12,
           border: "none", backgroundColor: "#8B1A1A",
           color: "#ECECEC", fontSize: 14, cursor: "pointer",
           letterSpacing: "0.03em", marginTop: 8
         }}>
-          Get this made →
+          Get styling advice on this with Shaaru →
         </button>
       </div>
     </div>
@@ -1253,6 +1069,12 @@ export default function TailorPage() {
   const [state, setState] = useState<"idle" | "chat" | "camera" | "brief">("idle")
   const [firstMessage, setFirstMessage] = useState("")
   const [briefData, setBriefData] = useState<AnalyzeResult | null>(null)
+  const [touchOverlay, setTouchOverlay] = useState<{
+    label: string
+    comment: string
+    bbox: { x: number; y: number; w: number; h: number }
+    color: string
+  } | null>(null)
 
   const handleFirstSend = (msg: string, _img?: string) => {
     setFirstMessage(msg)
@@ -1287,10 +1109,32 @@ export default function TailorPage() {
         {state === "camera" && (
           <motion.div key="camera" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}>
-            <CameraView
+            <CameraScanner
               onClose={() => setState("chat")}
-              onBriefReady={handleBriefReady}
+              onItemSelected={() => {}}
+              userId="default"
+              onAnalysisComplete={handleBriefReady}
+              onItemTouched={(data) => {
+                setTouchOverlay(data)
+                setTimeout(() => setTouchOverlay(null), 4000)
+              }}
             />
+            {touchOverlay && (
+              <div
+                className="fixed z-[60] bg-black/80 border border-[#39FF14] p-3 rounded font-mono shadow-xl pointer-events-none max-w-[240px]"
+                style={{
+                  left: `${Math.max(5, touchOverlay.bbox.x * 100)}%`,
+                  top: `${Math.min(80, (touchOverlay.bbox.y + touchOverlay.bbox.h) * 100)}%`,
+                }}
+              >
+                <div className="text-[#39FF14] font-bold text-xs uppercase mb-1">
+                  // {touchOverlay.label}
+                </div>
+                <div className="text-white text-xs leading-snug">
+                  {touchOverlay.comment}
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
         {state === "brief" && briefData && (
@@ -1299,6 +1143,7 @@ export default function TailorPage() {
             <BriefView
               brief={briefData}
               onBack={() => setState("chat")}
+              onContinueToChat={() => setState("chat")}
             />
           </motion.div>
         )}

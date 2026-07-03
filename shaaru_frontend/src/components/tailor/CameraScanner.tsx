@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X, Loader2, Mic } from "lucide-react";
+import { HandLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 
 async function fetchWithTimeout(resource: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
   const { timeout = 90000 } = options as any;
@@ -223,8 +224,14 @@ function drawHUDStatic(
 interface CameraScannerProps {
   onClose: () => void;
   onItemSelected: (item: ScannedItem) => void;
-  userId: string;
+  userId?: string;
   onAnalysisComplete: (result: any) => void;
+  onItemTouched?: (data: {
+    label: string;
+    comment: string;
+    bbox: { x: number; y: number; w: number; h: number };
+    color: string;
+  }) => void;
 }
 
 export function CameraScanner({
@@ -232,6 +239,7 @@ export function CameraScanner({
   onItemSelected,
   userId,
   onAnalysisComplete,
+  onItemTouched,
 }: CameraScannerProps) {
   const [scanning, setScanning] = useState(false);
   const [annotatedFrame, setAnnotatedFrame] = useState<string | null>(null);
@@ -248,6 +256,12 @@ export function CameraScanner({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
+  const handLandmarkerRef = useRef<HandLandmarker | null>(null);
+  const dwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dwellItemRef = useRef<string | null>(null);
+  const commentedItemsRef = useRef<Map<string, number>>(new Map());
+  const isSpeakingRef = useRef<boolean>(false);
+
   // Need to track the last captured base64 for analyze step
   const lastCapturedB64 = useRef<string | null>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -279,7 +293,7 @@ export function CameraScanner({
         try {
           const formData = new FormData();
           formData.append("file", blob, "live_voice.webm");
-          formData.append("user_id", userId);
+          formData.append("user_id", userId || "default");
           formData.append("enable_tts", "true");
           if (lastCapturedB64.current) {
             formData.append("image_base64", lastCapturedB64.current);
@@ -356,6 +370,172 @@ export function CameraScanner({
   }, []);
 
   useEffect(() => {
+    const init = async () => {
+      try {
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+        );
+        const hl = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            delegate: "GPU",
+          },
+          runningMode: "VIDEO",
+          numHands: 1,
+          minHandDetectionConfidence: 0.6,
+          minHandPresenceConfidence: 0.6,
+          minTrackingConfidence: 0.5,
+        });
+        handLandmarkerRef.current = hl;
+        console.log("[MediaPipe] Hand tracking ready");
+      } catch (e) {
+        console.warn(
+          "[MediaPipe] Init failed:",
+          e,
+          "— continuing without hand tracking"
+        );
+      }
+    };
+    init();
+    return () => {
+      if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
+    };
+  }, []);
+
+  const processHandTracking = (
+    videoEl: HTMLVideoElement,
+    timestamp: number,
+    currentFrameB64: string,
+    currentItems: any[]
+  ) => {
+    if (!handLandmarkerRef.current || !currentItems?.length) return;
+
+    try {
+      const results = handLandmarkerRef.current.detectForVideo(videoEl, timestamp);
+
+      if (!results?.landmarks?.length) {
+        // No hand — clear dwell
+        if (dwellTimerRef.current) {
+          clearTimeout(dwellTimerRef.current);
+          dwellTimerRef.current = null;
+          dwellItemRef.current = null;
+        }
+        return;
+      }
+
+      // Index fingertip = landmark 8
+      const tip = results.landmarks[0][8];
+      const fx = tip.x; // normalized 0-1
+      const fy = tip.y;
+
+      // Find which item bbox contains fingertip
+      let touched: any = null;
+      for (const item of currentItems) {
+        const b = item.bbox;
+        if (!b) continue;
+        if (fx >= b.x && fx <= b.x + b.w && fy >= b.y && fy <= b.y + b.h) {
+          touched = item;
+          break;
+        }
+      }
+
+      if (!touched) {
+        if (dwellTimerRef.current) {
+          clearTimeout(dwellTimerRef.current);
+          dwellTimerRef.current = null;
+          dwellItemRef.current = null;
+        }
+        return;
+      }
+
+      const label = touched.label as string;
+
+      // 60s dedup — already commented on this item?
+      const lastTime = commentedItemsRef.current.get(label) ?? 0;
+      if (Date.now() - lastTime < 60000) return;
+
+      // Already timing this item
+      if (dwellItemRef.current === label) return;
+
+      // New item — start 1.5s dwell timer
+      if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
+      dwellItemRef.current = label;
+
+      dwellTimerRef.current = setTimeout(async () => {
+        if (isSpeakingRef.current) return;
+
+        try {
+          isSpeakingRef.current = true;
+          commentedItemsRef.current.set(label, Date.now());
+
+          // Call touch endpoint
+          const resp = await fetch("/api/cv/touch", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              item_label: label,
+              item_color: touched.color ?? "",
+              item_category: touched.category ?? "",
+              item_aesthetic: touched.aesthetic ?? "",
+              all_items: currentItems.map((i: any) => i.label),
+              user_id: userId ?? "default",
+            }),
+          });
+
+          const data = await resp.json();
+
+          if (data.comment) {
+            // Show visual overlay
+            onItemTouched?.({
+              label,
+              comment: data.comment,
+              bbox: touched.bbox,
+              color: touched.color,
+            });
+
+            // Speak via Nova TTS
+            const ttsResp = await fetch("/api/voice/tts", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                text: data.comment,
+                voice: "nova",
+              }),
+            });
+            const ttsData = await ttsResp.json();
+            if (ttsData.audio_b64) {
+              const audio = new Audio(
+                "data:audio/mp3;base64," + ttsData.audio_b64
+              );
+              audio.onended = () => {
+                isSpeakingRef.current = false;
+              };
+              audio.play();
+            } else {
+              isSpeakingRef.current = false;
+            }
+          } else {
+            isSpeakingRef.current = false;
+          }
+        } catch (e) {
+          console.warn("[Touch] Failed:", e);
+          isSpeakingRef.current = false;
+        }
+
+        dwellTimerRef.current = null;
+        dwellItemRef.current = null;
+      }, 1500);
+    } catch (e) {
+      console.warn("[MediaPipe] Frame error:", e);
+    }
+  };
+
+  useEffect(() => {
     if (!annotatedFrame || !detectedItems.length) return;
     const img = resultImgRef.current;
     const canvas = overlayRef.current;
@@ -421,6 +601,7 @@ export function CameraScanner({
     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
     const image_b64 = dataUrl.split(",")[1]; // strip data:image/jpeg;base64,
     lastCapturedB64.current = image_b64;
+    processHandTracking(video, performance.now(), image_b64, detectedItems);
     setCapturedSrc(dataUrl);
 
     try {
