@@ -1442,9 +1442,11 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
     data = reconcile_scan_results(res1, res2)
     data["scene_context"] = scene_context
 
-    # If scene context failed OR frame_quality came back 'poor', default to 'acceptable'
-    # — never block a scan due to a quality flag
-    if scene_context_failed or data.get("frame_quality") == "poor":
+    # Normalize frame_quality — always set to a valid string.
+    # Catches: None (model didn't return it), 'poor' (blocked scan), or missing key.
+    # scene_context failure also forces 'acceptable' regardless of model output.
+    current_fq = data.get("frame_quality")
+    if scene_context_failed or not current_fq or current_fq == "poor":
         data["frame_quality"] = "acceptable"
 
     items = enrich_items_with_scene_context(data.get("items", []), scene_context)
@@ -1528,10 +1530,12 @@ def scan_frame(image_b64: str, user_id: str = "default", run_combos: bool = Fals
         if "guidance" not in data:
             data["guidance"] = "Move closer to the items if details are unclear."
 
-    # Never block a scan because of a quality flag — always default to 'acceptable'
-    if frame_quality == "poor" or data.get("frame_quality") == "poor":
-        log.info("[CV] Frame quality flagged as poor, defaulting to acceptable without blocking scan")
+    # Never block a scan because of a quality flag — always default to 'acceptable'.
+    # Also catches None (model omitted the key) via falsy check.
+    if not frame_quality or frame_quality == "poor" or not data.get("frame_quality") or data.get("frame_quality") == "poor":
+        log.info("[CV] Frame quality missing/poor, defaulting to acceptable without blocking scan")
         data["frame_quality"] = "acceptable"
+        frame_quality = "acceptable"
         if "guidance" not in data:
             data["guidance"] = "move closer to the rack"
 
