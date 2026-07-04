@@ -249,7 +249,7 @@ def execute_tool(tool_name: str, arguments: dict, user_id: str) -> str:
            OR toLower(a.description) CONTAINS toLower($q)
            RETURN a.name, a.description, a.vibe_tags
            LIMIT $top_k""",
-        q=query, top_k=top_k
+        q=query, top_k=int(top_k)
       )
       aesthetics = [dict(r) for r in result]
     driver.close()
