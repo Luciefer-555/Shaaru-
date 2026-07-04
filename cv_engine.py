@@ -142,7 +142,7 @@ def _repair_json_with_llm(malformed_text: str) -> Optional[dict]:
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
             max_tokens=1500,
-            timeout=15.0,
+            timeout=12.0,
         )
         content = raw.choices[0].message.content or ""
         clean = content.strip()
@@ -334,7 +334,7 @@ def _localize_missing_bboxes(client, items: list, image_b64: str) -> list:
                 }],
                 temperature=0.1,
                 max_tokens=64,
-                timeout=30.0,
+                timeout=12.0,
             )
             content = raw.choices[0].message.content or ""
             parsed = _parse_scan_json(content)
@@ -491,7 +491,7 @@ def _batch_localize_bboxes(client, items: list, image_b64: str) -> list:
             }],
             temperature=0.1,
             max_tokens=300,
-            timeout=45.0,
+            timeout=12.0,
         )
         content = raw.choices[0].message.content or ""
         parsed = _parse_scan_json(content)
@@ -692,7 +692,7 @@ def format_combos_for_speech(combos: list) -> str:
 
 
 
-async def _call_model_for_scan(client, model_name: str, messages: list, is_json_object: bool = False) -> Optional[dict]:
+async def _call_model_for_scan(client, model_name: str, messages: list, is_json_object: bool = False, timeout: float = 25.0) -> Optional[dict]:
     import asyncio
     try:
         kwargs = {
@@ -700,7 +700,7 @@ async def _call_model_for_scan(client, model_name: str, messages: list, is_json_
             "messages": messages,
             "temperature": 0.1,
             "max_tokens": 2048,
-            "timeout": 45.0,
+            "timeout": timeout,
         }
         if is_json_object and "nemotron" not in model_name.lower():
             kwargs["response_format"] = {"type": "json_object"}
@@ -708,7 +708,7 @@ async def _call_model_for_scan(client, model_name: str, messages: list, is_json_
             kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
             
         coro = client.chat.completions.create(**kwargs)
-        raw = await asyncio.wait_for(coro, timeout=50.0)
+        raw = await asyncio.wait_for(coro, timeout=timeout)
         content = raw.choices[0].message.content or ""
         if not content.lstrip().startswith("{") and "{" in content:
             content = "{" + content.split("{", 1)[1]
@@ -722,7 +722,7 @@ def reconcile_scan_results(data1: Optional[dict], data2: Optional[dict]) -> dict
         return {
             "items": [],
             "scene_lighting": "unknown",
-            "frame_quality": "poor",
+            "frame_quality": "acceptable",
             "guidance": "Vision model unavailable — try again",
         }
     if not data1:
@@ -742,7 +742,7 @@ def reconcile_scan_results(data1: Optional[dict], data2: Optional[dict]) -> dict
 
     fq1 = data1.get("frame_quality", "good")
     fq2 = data2.get("frame_quality", "good")
-    frame_quality = "poor" if fq1 == "poor" or fq2 == "poor" else "good"
+    frame_quality = "poor" if (fq1 == "poor" and fq2 == "poor") else "good"
 
     items1 = data1.get("items", [])
     items2 = data2.get("items", [])
@@ -1072,14 +1072,84 @@ def get_accurate_color(image_b64: str, bbox: dict) -> dict:
         'delta_e': round(float(best_delta), 2),
         'dominant_lab': best_lab
     }
+def _segment_single_item(args: tuple) -> dict:
+    """Process one item: GrabCut segmentation + color extraction. Runs in a thread pool."""
+    import cv2
+    import numpy as np
+
+    item, img, img_w, img_h, image_b64 = args
+    bbox = item.get("bbox", {})
+    if not isinstance(bbox, dict) or "w" not in bbox or "h" not in bbox:
+        return item
+
+    x = max(0, int(bbox.get("x", 0) * img_w))
+    y = max(0, int(bbox.get("y", 0) * img_h))
+    w = min(img_w - x, int(bbox.get("w", 0) * img_w))
+    h = min(img_h - y, int(bbox.get("h", 0) * img_h))
+
+    if w <= 10 or h <= 10:
+        return item
+
+    crop = img[y:y+h, x:x+w]
+
+    try:
+        mask = np.zeros(crop.shape[:2], np.uint8)
+        bgdModel = np.zeros((1, 65), np.float64)
+        fgdModel = np.zeros((1, 65), np.float64)
+
+        margin_x = max(1, int(w * 0.08))
+        margin_y = max(1, int(h * 0.08))
+        rect = (margin_x, margin_y, max(2, w - 2 * margin_x), max(2, h - 2 * margin_y))
+
+        cv2.grabCut(crop, mask, rect, bgdModel, fgdModel, 3, cv2.GC_INIT_WITH_RECT)
+        fg_mask = np.where((mask == 2) | (mask == 0), 0, 1).astype("uint8")
+        fg_pixels = crop[fg_mask == 1]
+
+        if len(fg_pixels) < 20:
+            cy1, cy2 = int(h * 0.2), int(h * 0.8)
+            cx1, cx2 = int(w * 0.2), int(w * 0.8)
+            fg_pixels = crop[cy1:cy2, cx1:cx2].reshape(-1, 3)
+        else:
+            fg_pixels = fg_pixels.reshape(-1, 3)
+
+        if len(fg_pixels) >= 5:
+            pixels = np.float32(fg_pixels)
+            k = min(3, len(pixels))
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+            _, labels, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+
+            counts = np.bincount(labels.flatten())
+            dominant_bgr = centers[np.argmax(counts)]
+            r, g, b = int(dominant_bgr[2]), int(dominant_bgr[1]), int(dominant_bgr[0])
+            item = {**item, "dominant_color_rgb": [r, g, b]}
+
+        if float(item.get("confidence", 0.8)) > 0.6 and item.get("bbox"):
+            c_info = get_accurate_color(image_b64, item["bbox"])
+            if c_info.get("color_name", "unknown") != "unknown":
+                item["color"] = c_info["color_name"]
+                item["color_confidence"] = c_info.get("confidence", 0.0)
+                item["delta_e"] = c_info.get("delta_e", 0.0)
+
+    except Exception as e:
+        log.warning(f"[SEGMENTATION] Failed on item {item.get('label')}: {e}")
+
+    return item
+
+
 def segment_garments(image_b64: str, items: list) -> list:
+    """
+    Run GrabCut segmentation + color extraction on all items in parallel.
+    Each item is independent CPU work — ThreadPoolExecutor gives near-linear
+    speedup: 7 items sequentially ~5s → parallel ~1s.
+    """
     import cv2
     import numpy as np
     import base64
-    
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     if not items:
         return items
-        
+
     try:
         img_bytes = base64.b64decode(image_b64)
         img_array = np.frombuffer(img_bytes, dtype=np.uint8)
@@ -1089,75 +1159,28 @@ def segment_garments(image_b64: str, items: list) -> list:
     except Exception as e:
         log.warning(f"[SEGMENTATION] Image decode error: {e}")
         return items
-        
+
     img_h, img_w = img.shape[:2]
-    segmented_items = []
-    
-    for item in items:
-        bbox = item.get("bbox", {})
-        if not isinstance(bbox, dict) or "w" not in bbox or "h" not in bbox:
-            segmented_items.append(item)
-            continue
-            
-        x = max(0, int(bbox.get("x", 0) * img_w))
-        y = max(0, int(bbox.get("y", 0) * img_h))
-        w = min(img_w - x, int(bbox.get("w", 0) * img_w))
-        h = min(img_h - y, int(bbox.get("h", 0) * img_h))
-        
-        if w <= 10 or h <= 10:
-            segmented_items.append(item)
-            continue
-            
-        crop = img[y:y+h, x:x+w]
-        
-        try:
-            mask = np.zeros(crop.shape[:2], np.uint8)
-            bgdModel = np.zeros((1, 65), np.float64)
-            fgdModel = np.zeros((1, 65), np.float64)
-            
-            margin_x = max(1, int(w * 0.08))
-            margin_y = max(1, int(h * 0.08))
-            rect = (margin_x, margin_y, max(2, w - 2 * margin_x), max(2, h - 2 * margin_y))
-            
-            cv2.grabCut(crop, mask, rect, bgdModel, fgdModel, 3, cv2.GC_INIT_WITH_RECT)
-            fg_mask = np.where((mask == 2) | (mask == 0), 0, 1).astype("uint8")
-            fg_pixels = crop[fg_mask == 1]
-            
-            if len(fg_pixels) < 20:
-                cy1, cy2 = int(h * 0.2), int(h * 0.8)
-                cx1, cx2 = int(w * 0.2), int(w * 0.8)
-                fg_pixels = crop[cy1:cy2, cx1:cx2].reshape(-1, 3)
-            else:
-                fg_pixels = fg_pixels.reshape(-1, 3)
-                
-            if len(fg_pixels) < 5:
-                segmented_items.append(item)
-                continue
-                
-            pixels = np.float32(fg_pixels)
-            k = min(3, len(pixels))
-            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-            _, labels, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-            
-            counts = np.bincount(labels.flatten())
-            dominant_bgr = centers[np.argmax(counts)]
-            r, g, b = int(dominant_bgr[2]), int(dominant_bgr[1]), int(dominant_bgr[0])
-            
-            item = {**item, "dominant_color_rgb": [r, g, b]}
-            
-            if float(item.get("confidence", 0.8)) > 0.6 and item.get("bbox"):
-                c_info = get_accurate_color(image_b64, item["bbox"])
-                if c_info.get("color_name", "unknown") != "unknown":
-                    item["color"] = c_info["color_name"]
-                    item["color_confidence"] = c_info.get("confidence", 0.0)
-                    item["delta_e"] = c_info.get("delta_e", 0.0)
-                
-        except Exception as e:
-            log.warning(f"[SEGMENTATION] Failed on item {item.get('label')}: {e}")
-            
-        segmented_items.append(item)
-        
-    return segmented_items
+
+    # Build task args — one tuple per item (img is shared read-only, safe across threads)
+    task_args = [(item, img, img_w, img_h, image_b64) for item in items]
+
+    # Use min(len(items), 8) workers — no point spawning more threads than items
+    max_workers = min(len(items), 8)
+    results_map: dict[int, dict] = {}
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        future_to_idx = {pool.submit(_segment_single_item, args): i for i, args in enumerate(task_args)}
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                results_map[idx] = future.result()
+            except Exception as e:
+                log.warning(f"[SEGMENTATION] Thread failed for item idx {idx}: {e}")
+                results_map[idx] = items[idx]  # fall back to original
+
+    # Return in original order
+    return [results_map.get(i, items[i]) for i in range(len(items))]
 
 
 def detect_scene_context(image_b64: str, client=None) -> dict:
@@ -1290,7 +1313,15 @@ def enrich_items_with_scene_context(items: list, scene_context: dict) -> list:
     return enriched
 
 
-async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_consensus: bool = True) -> dict:
+async def call_with_timeout(coro, seconds=12):
+    import asyncio
+    try:
+        return await asyncio.wait_for(coro, seconds)
+    except asyncio.TimeoutError:
+        return None
+
+
+async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_consensus: bool = True, run_combos: bool = False) -> dict:
     import os
     import asyncio
     from openai import AsyncOpenAI
@@ -1299,7 +1330,9 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
 
     api_key = os.environ.get("NVIDIA_API_KEY", "")
     base_url = "https://integrate.api.nvidia.com/v1"
-    async_client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=45.0, max_retries=0)
+    # Client-level timeout must be HIGHER than the largest per-call timeout (25s)
+    # otherwise the client-level cap silently kills calls before the per-call timeout fires.
+    async_client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=35.0, max_retries=0)
 
     nemotron_messages = [
         {
@@ -1327,36 +1360,102 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
         {"role": "assistant", "content": "{"}
     ]
 
-    task_scene = _detect_scene_context_async(image_b64, async_client)
-    task1 = _call_model_for_scan(async_client, _MODEL_NEMOTRON, nemotron_messages, False)
-    task2 = _call_model_for_scan(async_client, _MODEL_VISION_90B, llama_messages, True)
+    import time
 
-    results = await asyncio.gather(task_scene, task1, task2, return_exceptions=True)
-    scene_context = results[0] if isinstance(results[0], dict) else {
-        'has_person': False,
-        'person_in_foreground': False,
-        'rack_items_visible': True,
-        'scene_type': 'store_rack',
-        'foreground_focus': 'rack'
-    }
-    res1 = results[1] if isinstance(results[1], dict) else None
-    res2 = results[2] if isinstance(results[2], dict) else None
+    # ── [TIMING] Preprocess already done in scan_frame — log it here only in async path
+    async def run_dual_models():
+        # Primary: Nemotron 25s | Secondary: Llama-90B 25s | Fallback: Llama-11B 20s
+        t1 = asyncio.create_task(call_with_timeout(_call_model_for_scan(async_client, _MODEL_NEMOTRON, nemotron_messages, False, timeout=25.0), 25.0))
+        t2 = asyncio.create_task(call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_90B, llama_messages, True, timeout=25.0), 25.0))
 
-    if not res1 and not res2:
-        log.info("[CV] Both dual models returned None, falling back to 11b vision")
-        res1 = await _call_model_for_scan(async_client, _MODEL_VISION_11B, llama_messages, True)
+        done, pending = await asyncio.wait([t1, t2], return_when=asyncio.FIRST_COMPLETED)
+
+        res1, res2 = None, None
+        success = False
+        for task in done:
+            val = task.result()
+            if isinstance(val, dict) and val.get("items"):
+                if task == t1: res1 = val
+                if task == t2: res2 = val
+                success = True
+                break
+            elif isinstance(val, dict):
+                if task == t1: res1 = val
+                if task == t2: res2 = val
+
+        if success:
+            for p in pending:
+                p.cancel()
+        elif pending:
+            done2, _ = await asyncio.wait(pending)
+            for task in done2:
+                val = task.result()
+                if isinstance(val, dict):
+                    if task == t1: res1 = val
+                    if task == t2: res2 = val
+
+        if (not res1 or not res1.get("items")) and (not res2 or not res2.get("items")):
+            log.info("[CV] Both dual models returned None/empty, falling back to 11b vision")
+            t_fb = time.time()
+            res_fallback = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_11B, llama_messages, True, timeout=20.0), 20.0)
+            print(f"[TIMING] 11B fallback: {round(time.time()-t_fb,2)}s")
+            if res_fallback and res_fallback.get("items"):
+                res1 = res_fallback
+            else:
+                # Return whatever partial result we have — never return empty items[]
+                res1 = res_fallback or res1 or res2 or {"items": [], "frame_quality": "acceptable", "scene_lighting": "unknown"}
+        return res1, res2
+
+    async def timed_dual():
+        t_d = time.time()
+        res = await run_dual_models()
+        print(f"[TIMING] Dual vision: {round(time.time()-t_d,2)}s")
+        return res
+
+    async def timed_scene():
+        t_s = time.time()
+        # scene context runs IN PARALLEL with dual models — not before them
+        res = await call_with_timeout(_detect_scene_context_async(image_b64, async_client), 15.0)
+        print(f"[TIMING] Scene context: {round(time.time()-t_s,2)}s")
+        return res
+
+    # ── Run dual vision models + scene context in TRUE parallel ──
+    (res1, res2), scene_context_raw = await asyncio.gather(
+        timed_dual(),
+        timed_scene()
+    )
+
+    # ── Scene context: never let a failure degrade quality ────────
+    if not scene_context_raw or not isinstance(scene_context_raw, dict) or "scene_type" not in scene_context_raw:
+        scene_context = {
+            'has_person': False,
+            'person_in_foreground': False,
+            'rack_items_visible': True,
+            'scene_type': 'store_rack',
+            'foreground_focus': 'rack'
+        }
+        scene_context_failed = True
+    else:
+        scene_context = scene_context_raw
+        scene_context_failed = False
 
     data = reconcile_scan_results(res1, res2)
     data["scene_context"] = scene_context
+
+    # If scene context failed OR frame_quality came back 'poor', default to 'acceptable'
+    # — never block a scan due to a quality flag
+    if scene_context_failed or data.get("frame_quality") == "poor":
+        data["frame_quality"] = "acceptable"
+
     items = enrich_items_with_scene_context(data.get("items", []), scene_context)
+
+    # ── Segmentation (includes color extraction per item) ─────────
+    t_segment = time.time()
     items = segment_garments(image_b64, items)
-    for item in items:
-        if float(item.get("confidence", 0.8)) > 0.6 and item.get("bbox"):
-            c_info = get_accurate_color(image_b64, item["bbox"])
-            if c_info.get("color_name", "unknown") != "unknown":
-                item["color"] = c_info["color_name"]
-                item["color_confidence"] = c_info.get("confidence", 0.0)
-                item["delta_e"] = c_info.get("delta_e", 0.0)
+    print(f"[TIMING] Segmentation+color: {round(time.time()-t_segment,2)}s")
+    # NOTE: segment_garments already calls get_accurate_color internally.
+    # DO NOT call get_accurate_color again here — that was the double-extraction bug.
+
     data["items"] = items
     if _apply_consensus:
         tracker = get_consensus_tracker(user_id or "default")
@@ -1364,12 +1463,15 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
     return data
 
 
-def scan_frame(image_b64: str, user_id: str = "default") -> dict:
+def scan_frame(image_b64: str, user_id: str = "default", run_combos: bool = False) -> dict:
     """
     Detect all visible garments/accessories in a single image frame.
     Calls two vision models concurrently and reconciles outputs.
     """
+    import time
+    t_preprocess = time.time()
     image_b64 = preprocess_frame(image_b64)
+    print(f"[TIMING] Preprocess: {round(time.time()-t_preprocess,2)}s")
     import asyncio
     try:
         loop = asyncio.get_running_loop()
@@ -1379,15 +1481,15 @@ def scan_frame(image_b64: str, user_id: str = "default") -> dict:
     if loop and loop.is_running():
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as pool:
-            data = pool.submit(lambda: asyncio.run(scan_frame_async(image_b64, user_id, _apply_consensus=False))).result()
+            data = pool.submit(lambda: asyncio.run(scan_frame_async(image_b64, user_id, _apply_consensus=False, run_combos=run_combos))).result()
     else:
-        data = asyncio.run(scan_frame_async(image_b64, user_id, _apply_consensus=False))
+        data = asyncio.run(scan_frame_async(image_b64, user_id, _apply_consensus=False, run_combos=run_combos))
 
     if not data:
         return {
             "items": [],
             "scene_lighting": "unknown",
-            "frame_quality": "poor",
+            "frame_quality": "acceptable",
             "guidance": "Vision model unavailable — try again",
         }
 
@@ -1398,12 +1500,16 @@ def scan_frame(image_b64: str, user_id: str = "default") -> dict:
     # ── Batch grid-based bbox localization first ─────────────────
     # Run before dedup so distinct items sharing a label (e.g. two black t-shirts)
     # can be distinguished by their spatial grid locations / bounding boxes.
-    if items:
-        log.info(f"[CV] Running batch grid localization for {len(items)} items")
+    t_bbox = time.time()
+    if items and any(not i.get("bbox") for i in items):
+        log.info(f"[CV] Running batch grid localization for items missing bboxes")
         client = _get_client()
         items = _batch_localize_bboxes(client, items, image_b64)
         items = segment_garments(image_b64, items)
         data["items"] = items
+        print(f"[TIMING] BBox: {round(time.time()-t_bbox,2)}s")
+    else:
+        print(f"[TIMING] BBox: 0.00s (all bboxes present)")
 
     # ── Dedup first, then guard ──────────────────────────────────
     items = _dedup_items(items)
@@ -1417,37 +1523,34 @@ def scan_frame(image_b64: str, user_id: str = "default") -> dict:
     if max_dupes >= 3:
         log.warning(
             f"[CV] Structural hallucination post-dedup: one label appears "
-            f"{max_dupes}x across {len(items)} items. Falling back."
+            f"{max_dupes}x across {len(items)} items. Continuing without wiping."
         )
-        items = []
-        data["items"] = []
-        data["frame_quality"] = "poor"
-        data["guidance"] = "Move closer to the items — Riley couldn't read this frame clearly."
+        if "guidance" not in data:
+            data["guidance"] = "Move closer to the items if details are unclear."
 
-    if frame_quality == "poor":
-        data["items"] = []
+    # Never block a scan because of a quality flag — always default to 'acceptable'
+    if frame_quality == "poor" or data.get("frame_quality") == "poor":
+        log.info("[CV] Frame quality flagged as poor, defaulting to acceptable without blocking scan")
+        data["frame_quality"] = "acceptable"
         if "guidance" not in data:
             data["guidance"] = "move closer to the rack"
-        return data
 
+    # ── Per-item guidance only — NO color re-extraction here ────
+    # segment_garments() already called get_accurate_color for each item.
+    # Calling it again here was causing ~5-8s of duplicate work.
     for item in items:
         conf = item.get("confidence", 1.0)
         if conf < 0.6 and "guidance" not in item:
             item["guidance"] = "move_closer"
-        elif float(conf) > 0.6 and item.get("bbox"):
-            c_info = get_accurate_color(image_b64, item["bbox"])
-            if c_info.get("color_name", "unknown") != "unknown":
-                item["color"] = c_info["color_name"]
-                item["color_confidence"] = c_info.get("confidence", 0.0)
-                item["delta_e"] = c_info.get("delta_e", 0.0)
 
     # ── Proactive outfit combinations for live mall scenario ─────
     wearable_cats = ("top", "bottom", "outerwear", "footwear", "dress", "set")
     wearable_items = [i for i in items if i.get("category", "").lower() in wearable_cats]
     import concurrent.futures
     combos_future = None
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    if len(wearable_items) >= 2:
+    pool = None
+    if run_combos and len(wearable_items) >= 2:
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         log.info(f"[CV] Proactively generating outfit combinations for {len(wearable_items)} wearable items")
         combos_future = pool.submit(generate_outfit_combinations, items)
 
@@ -1526,7 +1629,7 @@ def scan_frame(image_b64: str, user_id: str = "default") -> dict:
         data["annotated_frame_b64"] = ""
         data["pixel_boxes"] = []
 
-    if combos_future:
+    if combos_future and pool:
         try:
             data["combos"] = combos_future.result(timeout=10.0)
         except Exception as e:
@@ -1536,7 +1639,8 @@ def scan_frame(image_b64: str, user_id: str = "default") -> dict:
             pool.shutdown(wait=False)
     else:
         data["combos"] = []
-        pool.shutdown(wait=False)
+        if pool:
+            pool.shutdown(wait=False)
 
     tracker = get_consensus_tracker(user_id or 'default')
     items = tracker.update(items)
