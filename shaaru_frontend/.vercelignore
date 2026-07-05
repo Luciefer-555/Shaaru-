@@ -1,0 +1,7 @@
+node_modules/
+.next/
+*.log
+test-layout*.js
+take-screenshots.js
+test-layout-screenshot.png
+tsconfig.tsbuildinfo

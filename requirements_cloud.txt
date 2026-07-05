@@ -1,0 +1,115 @@
+# ─────────────────────────────────────────────────────────────────
+# SHAARU Cloud Requirements — Railway / Vercel deployment
+# NO torch, torchvision, ultralytics, fastsam, CUDA packages
+#
+# Generated from ast-scan of:
+#   cv_engine.py, cv_router.py, knowledge_fallback.py,
+#   api.py, riley_brain.py, shaaru_brain.py,
+#   voice_router.py, database.py
+# Versions pinned from: venv311 pip freeze (2026-07-05)
+# ─────────────────────────────────────────────────────────────────
+
+# ── Web framework ────────────────────────────────────────────────
+fastapi==0.136.3
+uvicorn==0.49.0
+starlette==1.3.1
+python-multipart==0.0.32
+
+# ── Data validation ──────────────────────────────────────────────
+pydantic==2.13.4
+pydantic_core==2.46.4
+annotated-types==0.7.0
+typing_extensions==4.15.0
+typing-inspection==0.4.2
+
+# ── HTTP / async ──────────────────────────────────────────────────
+httpx==0.28.1
+httpcore==1.0.9
+anyio==4.13.0
+sniffio==1.3.1
+requests==2.34.2
+h11==0.16.0
+certifi==2026.5.20
+charset-normalizer==3.4.7
+idna==3.18
+urllib3==2.7.0
+
+# ── AI / LLM ──────────────────────────────────────────────────────
+openai==2.41.1
+jiter==0.15.0
+distro==1.9.0
+
+# ── Knowledge search ─────────────────────────────────────────────
+tavily-python==0.7.26
+
+# ── Databases ────────────────────────────────────────────────────
+motor==3.7.1
+pymongo==4.17.0
+dnspython==2.8.0
+greenlet==3.5.1
+neo4j==6.2.0
+
+# ── Computer vision (CPU only) ───────────────────────────────────
+opencv-python==4.13.0.92
+pillow==11.1.0
+numpy==2.5.0
+supervision==0.29.0.post0
+
+# ── Colour science (CPU) ─────────────────────────────────────────
+colour-science==0.4.7
+colormath==3.0.0
+colorgram.py==1.2.0
+scipy==1.18.0
+
+# ── Supervision deps ─────────────────────────────────────────────
+matplotlib==3.11.0
+contourpy==1.3.3
+cycler==0.12.1
+fonttools==4.63.0
+kiwisolver==1.5.0
+pyparsing==3.3.2
+python-dateutil==2.9.0.post0
+PyYAML==6.0.3
+pyDeprecate==0.9.0
+defusedxml==0.7.1
+
+# ── TTS ──────────────────────────────────────────────────────────
+gTTS==2.5.4
+
+# ── Auth / security ──────────────────────────────────────────────
+python-jose==3.5.0
+passlib==1.7.4
+bcrypt==5.0.0
+cryptography==49.0.0
+cffi==2.0.0
+pycparser==3.0
+pyasn1==0.6.3
+rsa==4.9.1
+ecdsa==0.19.2
+six==1.17.0
+
+# ── Scheduling ───────────────────────────────────────────────────
+APScheduler==3.11.2
+pytz==2026.2
+tzdata==2026.2
+tzlocal==5.3.1
+
+# ── RSS / feeds ──────────────────────────────────────────────────
+feedparser==6.0.12
+sgmllib3k==1.0.0
+
+# ── Tokenization ─────────────────────────────────────────────────
+tiktoken==0.13.0
+regex==2026.5.9
+
+# ── Logging ──────────────────────────────────────────────────────
+loguru==0.7.3
+
+# ── Utils ────────────────────────────────────────────────────────
+python-dotenv==1.2.2
+tqdm==4.68.2
+packaging==26.2
+click==8.4.2
+RapidFuzz==3.14.5
+sentinels==1.1.1
+six==1.17.0

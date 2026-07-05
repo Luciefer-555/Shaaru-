@@ -1072,115 +1072,14 @@ def get_accurate_color(image_b64: str, bbox: dict) -> dict:
         'delta_e': round(float(best_delta), 2),
         'dominant_lab': best_lab
     }
-def _segment_single_item(args: tuple) -> dict:
-    """Process one item: GrabCut segmentation + color extraction. Runs in a thread pool."""
-    import cv2
-    import numpy as np
-
-    item, img, img_w, img_h, image_b64 = args
-    bbox = item.get("bbox", {})
-    if not isinstance(bbox, dict) or "w" not in bbox or "h" not in bbox:
-        return item
-
-    x = max(0, int(bbox.get("x", 0) * img_w))
-    y = max(0, int(bbox.get("y", 0) * img_h))
-    w = min(img_w - x, int(bbox.get("w", 0) * img_w))
-    h = min(img_h - y, int(bbox.get("h", 0) * img_h))
-
-    if w <= 10 or h <= 10:
-        return item
-
-    crop = img[y:y+h, x:x+w]
-
-    try:
-        mask = np.zeros(crop.shape[:2], np.uint8)
-        bgdModel = np.zeros((1, 65), np.float64)
-        fgdModel = np.zeros((1, 65), np.float64)
-
-        margin_x = max(1, int(w * 0.08))
-        margin_y = max(1, int(h * 0.08))
-        rect = (margin_x, margin_y, max(2, w - 2 * margin_x), max(2, h - 2 * margin_y))
-
-        cv2.grabCut(crop, mask, rect, bgdModel, fgdModel, 3, cv2.GC_INIT_WITH_RECT)
-        fg_mask = np.where((mask == 2) | (mask == 0), 0, 1).astype("uint8")
-        fg_pixels = crop[fg_mask == 1]
-
-        if len(fg_pixels) < 20:
-            cy1, cy2 = int(h * 0.2), int(h * 0.8)
-            cx1, cx2 = int(w * 0.2), int(w * 0.8)
-            fg_pixels = crop[cy1:cy2, cx1:cx2].reshape(-1, 3)
-        else:
-            fg_pixels = fg_pixels.reshape(-1, 3)
-
-        if len(fg_pixels) >= 5:
-            pixels = np.float32(fg_pixels)
-            k = min(3, len(pixels))
-            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-            _, labels, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-
-            counts = np.bincount(labels.flatten())
-            dominant_bgr = centers[np.argmax(counts)]
-            r, g, b = int(dominant_bgr[2]), int(dominant_bgr[1]), int(dominant_bgr[0])
-            item = {**item, "dominant_color_rgb": [r, g, b]}
-
-        if float(item.get("confidence", 0.8)) > 0.6 and item.get("bbox"):
-            c_info = get_accurate_color(image_b64, item["bbox"])
-            if c_info.get("color_name", "unknown") != "unknown":
-                item["color"] = c_info["color_name"]
-                item["color_confidence"] = c_info.get("confidence", 0.0)
-                item["delta_e"] = c_info.get("delta_e", 0.0)
-
-    except Exception as e:
-        log.warning(f"[SEGMENTATION] Failed on item {item.get('label')}: {e}")
-
-    return item
-
-
-def segment_garments(image_b64: str, items: list) -> list:
-    """
-    Run GrabCut segmentation + color extraction on all items in parallel.
-    Each item is independent CPU work — ThreadPoolExecutor gives near-linear
-    speedup: 7 items sequentially ~5s → parallel ~1s.
-    """
-    import cv2
-    import numpy as np
-    import base64
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    if not items:
-        return items
-
-    try:
-        img_bytes = base64.b64decode(image_b64)
-        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-        if img is None:
-            return items
-    except Exception as e:
-        log.warning(f"[SEGMENTATION] Image decode error: {e}")
-        return items
-
-    img_h, img_w = img.shape[:2]
-
-    # Build task args — one tuple per item (img is shared read-only, safe across threads)
-    task_args = [(item, img, img_w, img_h, image_b64) for item in items]
-
-    # Use min(len(items), 8) workers — no point spawning more threads than items
-    max_workers = min(len(items), 8)
-    results_map: dict[int, dict] = {}
-
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        future_to_idx = {pool.submit(_segment_single_item, args): i for i, args in enumerate(task_args)}
-        for future in as_completed(future_to_idx):
-            idx = future_to_idx[future]
-            try:
-                results_map[idx] = future.result()
-            except Exception as e:
-                log.warning(f"[SEGMENTATION] Thread failed for item idx {idx}: {e}")
-                results_map[idx] = items[idx]  # fall back to original
-
-    # Return in original order
-    return [results_map.get(i, items[i]) for i in range(len(items))]
+def segment_garments(
+    image_b64: str,
+    detected_items: list
+) -> list:
+    # FastSAM / GrabCut removed for cloud deployment.
+    # Colour-science color extraction still runs via
+    # get_accurate_color() which is called in the scan loop.
+    return detected_items
 
 
 def detect_scene_context(image_b64: str, client=None) -> dict:
