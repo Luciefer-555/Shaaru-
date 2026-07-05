@@ -35,19 +35,9 @@ NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 MONGO_URI = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI")
 DB_NAME   = os.getenv("MONGODB_DB_NAME", "shaaru")
 
-_mongo_client = None
-_mongo_db     = None
-
 def _get_db():
-    global _mongo_client, _mongo_db
-    if _mongo_db is not None:
-        return _mongo_db
-    from pymongo import MongoClient
-    uri = os.getenv("MONGODB_URI")
-    db_name = os.getenv("MONGODB_DB", "shaaru")
-    _mongo_client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-    _mongo_db = _mongo_client[db_name]
-    return _mongo_db
+    from database import get_db
+    return get_db()
 
 def _seed_mock_db(db):
     from datetime import timezone
@@ -59,7 +49,7 @@ def _seed_mock_db(db):
         "physical": {"height_cm":163,"body_type":"pear"},
         "taste": {"everyday":["Casual","Minimalist"],"cozy":["Cottagecore"],"fashion_week":["Editorial"],"dream_outfit":["Quiet Luxury"],"color_palette":["earth tones","neutrals"],"occasion":["college","brunch"],"style_icon":"Janhvi Kapoor"},
         "style_equation": {"primary_aesthetic":"Quiet Luxury","secondary_aesthetic":"Minimalist"},
-        "meta": {"tier":"free","onboarding_complete":True},
+        "meta": {"tier":"free","onboarding_complete":False},
     })
     db["trends"].insert_one({
         "captured_at": now,
@@ -304,7 +294,7 @@ def _build_zone2(user: dict) -> str:
         if taste.get("style_icon"):
             lines.append(f"Style icon: {taste['style_icon']}")
 
-        # Pull top behavioral edges from Neo4j
+        # Pull top behavioral edges and graph context from Neo4j
         if HAS_KG and kg:
             try:
                 sessions_count = user.get("meta", {}).get("sessions_count", 0)
@@ -312,8 +302,17 @@ def _build_zone2(user: dict) -> str:
                     edges = _query_behavioral_edges(user.get("user_id", ""))
                     if edges:
                         lines.append("Behavioral signals: " + "; ".join(edges[:10]))
+                
+                # Inject Neo4j Graph Context (Brands & Silhouettes)
+                from pipeline.knowledge.graph_query import get_brands_by_vibe
+                vibes_to_check = taste.get("everyday", [])[:1] or ["streetwear"]
+                for v in vibes_to_check:
+                    g_brands = get_brands_by_vibe(v)
+                    if g_brands:
+                        b_names = [b["name"] for b in g_brands[:4]]
+                        lines.append(f"Graph context ({v} brands): {', '.join(b_names)}")
             except Exception as e:
-                log.debug(f"Neo4j behavioral edge query failed: {e}")
+                log.debug(f"Neo4j query failed in Zone 2: {e}")
 
         return "TASTE PROFILE:\n" + "\n".join(lines) if lines else ""
     except Exception as e:

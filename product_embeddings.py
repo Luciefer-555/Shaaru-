@@ -2,7 +2,7 @@ import os
 import requests
 import logging
 from datetime import datetime, timezone
-from shaaru_brain import _get_db
+from database import get_db
 
 log = logging.getLogger("shaaru.embeddings")
 
@@ -60,7 +60,7 @@ def generate_product_embedding(product: dict) -> list[float] | None:
     return embedding
 
 def embed_all_products() -> dict:
-    db = _get_db()
+    db = get_db()
     if db is None:
         return {"error": "Database unavailable"}
         
@@ -104,29 +104,27 @@ def search_products_semantic(query: str, limit: int = 5, filters: dict = None) -
     if not query_embedding:
         return []
         
-    db = _get_db()
+    db = get_db()
     if db is None:
         return []
         
-    pipeline = [
-        {
-            "$vectorSearch": {
-                "index": "product_embedding_index",
-                "path": "embedding",
-                "queryVector": query_embedding,
-                "numCandidates": 50,
-                "limit": limit
-            }
+    vector_search_stage = {
+        "$vectorSearch": {
+            "index": "product_embedding_index",
+            "path": "embedding",
+            "queryVector": query_embedding,
+            "numCandidates": 150,
+            "limit": limit
         }
-    ]
-    
+    }
     if filters:
-        pipeline.append({"$match": filters})
-        
-    pipeline.extend([
+        vector_search_stage["$vectorSearch"]["filter"] = filters
+
+    pipeline = [
+        vector_search_stage,
         {"$addFields": {"score": {"$meta": "vectorSearchScore"}}},
         {"$project": {"embedding": 0}}
-    ])
+    ]
     
     try:
         cursor = db["products"].aggregate(pipeline)

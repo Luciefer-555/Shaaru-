@@ -68,6 +68,16 @@ def generate_tts_audio(text: str, voice: str = "nova") -> Optional[str]:
         except Exception as e:
             log.warning(f"[VOICE TTS] ElevenLabs TTS failed: {e}")
 
+    try:
+        from gtts import gTTS
+        fp = io.BytesIO()
+        tts = gTTS(text=text[:500], lang="en")
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        return base64.b64encode(fp.read()).decode("utf-8")
+    except Exception as e:
+        log.warning(f"[VOICE TTS] gTTS fallback failed: {e}")
+
     return None
 
 
@@ -77,7 +87,7 @@ async def text_to_speech(req: TTSRequest):
     audio_b64 = generate_tts_audio(req.text, req.voice or "nova")
     if not audio_b64:
         return {"status": "unavailable", "message": "No voice API keys configured or service offline."}
-    return {"status": "ok", "audio_base64": audio_b64, "format": "mp3"}
+    return {"status": "ok", "audio_base64": audio_b64, "audio_b64": audio_b64, "format": "mp3"}
 
 
 @router.post("/stt")

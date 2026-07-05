@@ -68,6 +68,7 @@ def run():
 
         if vector:
             updates["image_embedding"] = vector
+            updates["image_embedding_clip"] = vector
             updates["embedding_source"] = source
             success += 1
             logger.info(f"  ✓ {updates.get('name') or p.get('product_name')} ({source[:40]})")

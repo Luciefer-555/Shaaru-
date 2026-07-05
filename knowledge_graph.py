@@ -314,33 +314,32 @@ class KnowledgeGraph:
                 MERGE (p)-[:SUITS_SEASON]->(s)
             """, season=season.strip(), source_id=source_id)
 
-        # 4. Product → Occasions
-        for occasion in occasions:
-            if not occasion or not isinstance(occasion, str):
-                continue
+        # 4. Product → Occasions (UNWIND batch)
+        valid_occasions = [o.strip() for o in occasions if o and isinstance(o, str)]
+        if valid_occasions:
             tx.run("""
-                MERGE (o:Occasion {name: $occasion})
-                WITH o
                 MATCH (p:Product {source_id: $source_id})
+                UNWIND $occasions AS occ
+                MERGE (o:Occasion {name: occ})
                 MERGE (p)-[:SUITS_OCCASION]->(o)
-            """, occasion=occasion.strip(), source_id=source_id)
+            """, occasions=valid_occasions, source_id=source_id)
 
-        # 5. Product → Techniques → Region
-        for tech in techniques:
+        # 5. Product → Techniques → Region (UNWIND batch)
+        valid_techniques = [t.strip() for t in techniques if t and isinstance(t, str)]
+        if valid_techniques:
             tx.run("""
-                MERGE (t:Technique {name: $technique})
-                WITH t
                 MATCH (p:Product {source_id: $source_id})
+                UNWIND $techniques AS tech
+                MERGE (t:Technique {name: tech})
                 MERGE (p)-[:HAS_TECHNIQUE]->(t)
-            """, technique=tech, source_id=source_id)
-
+            """, techniques=valid_techniques, source_id=source_id)
             if region and isinstance(region, str):
                 tx.run("""
+                    UNWIND $techniques AS tech
+                    MATCH (t:Technique {name: tech})
                     MERGE (r:Region {name: $region})
-                    WITH r
-                    MATCH (t:Technique {name: $technique})
                     MERGE (t)-[:CRAFT_ORIGIN]->(r)
-                """, region=region.strip(), technique=tech)
+                """, techniques=valid_techniques, region=region.strip())
 
         # 6. Product → Brand node
         if designer and isinstance(designer, str):

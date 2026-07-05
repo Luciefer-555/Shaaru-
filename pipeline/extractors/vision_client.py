@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 _nvidia = AsyncOpenAI(
     api_key=os.environ["NVIDIA_API_KEY"],
     base_url="https://integrate.api.nvidia.com/v1",
-    timeout=45.0,
+    timeout=12.0,
     max_retries=0,
 )
 
@@ -195,7 +195,7 @@ async def _call_model(
                 },
             ],
         )
-        response = await asyncio.wait_for(coro, timeout=120)
+        response = await asyncio.wait_for(coro, timeout=12.0)
         content = response.choices[0].message.content
         if not content or len(content.strip()) < 20:
             logger.warning("%s returned empty response", label or model)
@@ -232,7 +232,7 @@ async def _call_model(
                     },
                 ],
             )
-            response = await asyncio.wait_for(coro, timeout=120)
+            response = await asyncio.wait_for(coro, timeout=12.0)
             content = response.choices[0].message.content
             if not content or len(content.strip()) < 20:
                 logger.warning("%s returned empty response on retry", label or model)

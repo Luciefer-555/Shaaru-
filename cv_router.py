@@ -15,9 +15,13 @@ from pydantic import BaseModel
 
 from cv_engine import scan_frame, analyze_item, generate_outfit_combinations
 
+import time
+
 log = logging.getLogger("shaaru.cv.router")
 
 router = APIRouter(prefix="/api/cv", tags=["cv"])
+
+_last_scan_cache = {}  # user_id -> {items, timestamp}
 
 
 # ── Request Models ────────────────────────────────────────────────
@@ -55,12 +59,26 @@ async def cv_scan(req: ScanRequest):
     """
     ts = datetime.now(timezone.utc).isoformat()
     try:
-        result = scan_frame(req.image_b64, user_id=req.user_id)
+        user_key = req.user_id or "default"
+        now = time.time()
+        if user_key in _last_scan_cache:
+            cached = _last_scan_cache[user_key]
+            if now - cached["timestamp"] < 8.0:
+                log.info(f"[CV SCAN] Returning cached scan for user={user_key} (< 8s since last scan)")
+                return cached["result"]
+
+        result = scan_frame(req.image_b64, user_id=req.user_id, run_combos=False)
         item_count = len(result.get("items", []))
         print(
             f"[CV SCAN] {ts} | user={req.user_id} | "
             f"items={item_count} | quality={result.get('frame_quality', 'unknown')}"
         )
+        if "error" not in result and result.get("frame_quality") != "poor":
+            _last_scan_cache[user_key] = {
+                "items": result.get("items", []),
+                "result": result,
+                "timestamp": now,
+            }
         try:
             from shaaru_brain import _get_db
             db = _get_db()

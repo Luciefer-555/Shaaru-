@@ -13,7 +13,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         user_id: body.user_id || 'demo_user',
         message: body.message,
-        history: body.history || []
+        history: body.history || [],
+        ...(body.image_base64 && { image_base64: body.image_base64 })
       })
     })
 
@@ -30,7 +31,9 @@ export async function POST(request: Request) {
       reply: data.reply || '',
       tool_calls: data.tool_calls || [],
       tailor_flow: data.tailor_flow ?? false,
-      model: data.model || ''
+      model: data.model || '',
+      redirect: data.redirect || null,
+      reason: data.reason || null
     })
 
   } catch {
