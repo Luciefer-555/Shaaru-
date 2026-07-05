@@ -3,7 +3,7 @@ import logging
 import os
 import re
 
-from shaaru_brain import _get_db, _get_client
+from shaaru_brain import _get_db, _get_client, MODEL_TEXT
 from shaaru_retry import nvidia_call
 from pipeline.knowledge.graph_query import (
     get_brands_by_vibe,
@@ -458,7 +458,7 @@ RULES:
   if not image_base64 and not _needs_tools(user_message):
     try:
       fast_resp = client.chat.completions.create(
-        model='meta/llama-3.3-70b-instruct',
+        model=MODEL_TEXT,
         messages=messages,
         max_tokens=180,
         timeout=18
@@ -475,7 +475,7 @@ RULES:
   # TURN 1 — model decides what to do
   def _call_turn1():
     return client.chat.completions.create(
-      model='meta/llama-3.3-70b-instruct',
+      model=MODEL_TEXT,
       messages=messages,
       tools=SHAARU_TOOLS,
       tool_choice='auto',
@@ -537,7 +537,7 @@ RULES:
     # TURN 3 — model writes final reply with tool results
     def _call_turn3():
       return client.chat.completions.create(
-        model='meta/llama-3.3-70b-instruct',
+        model=MODEL_TEXT,
         messages=messages,
         max_tokens=600,
         timeout=45
