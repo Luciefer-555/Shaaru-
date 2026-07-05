@@ -13,7 +13,14 @@ if root_dir not in sys.path: sys.path.append(root_dir)
 
 from knowledge_graph import KnowledgeGraph
 
-kg = KnowledgeGraph()
+kg = None
+
+
+def get_kg():
+    global kg
+    if kg is None:
+        kg = KnowledgeGraph()
+    return kg
 
 _PRODUCT_QUERY_SKIP = frozenset({
     "the", "this", "that", "from", "with", "want", "made", "make", "get",
@@ -75,11 +82,11 @@ def check_cache(
     Checks Neo4j for existing knowledge matching the query.
     Returns cached results if found.
     """
-    if not kg.is_connected:
+    if not get_kg().is_connected:
         return {"cache_hit": False}
         
     try:
-        with kg.driver.session() as session:
+        with get_kg().driver.session() as session:
             # Strategy 0 — title / URL handle match (e.g. "raqs", "shrine")
             for handle in _extract_product_handles(query):
                 result = session.run(_product_return_query(), handle=handle)
