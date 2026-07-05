@@ -663,11 +663,10 @@ class SignalRequest(BaseModel):
     session_id: str
 
 try:
-    from knowledge_graph import KnowledgeGraph
-    kg = KnowledgeGraph()
+    from knowledge_graph import get_kg
     HAS_KG = True
 except ImportError:
-    kg = None
+    get_kg = lambda: None
     HAS_KG = False
 
 def _process_signal(req: SignalRequest, signal_type: str):
@@ -679,7 +678,7 @@ def _process_signal(req: SignalRequest, signal_type: str):
         )
         db["briefs"].delete_many({"user_id": req.user_id})
 
-    if HAS_KG and kg and kg.is_connected:
+    if HAS_KG and get_kg() and get_kg().is_connected:
         now = datetime.now(timezone.utc).isoformat()
         rel_type = "SAVED"
         if signal_type == "skipped": rel_type = "SKIPPED"
@@ -693,7 +692,7 @@ def _process_signal(req: SignalRequest, signal_type: str):
         ON MATCH SET r.weight = r.weight + 1, r.updated_at = $now
         """
         try:
-            kg.query(query, {"user_id": req.user_id, "product_id": req.product_id, "now": now})
+            get_kg().query(query, {"user_id": req.user_id, "product_id": req.product_id, "now": now})
         except Exception as e:
             log.warning(f"Neo4j {signal_type} signal failed: {e}")
 
@@ -902,7 +901,7 @@ async def onboarding_complete(req: OnboardingCompleteRequest):
     
     db["briefs"].delete_many({"user_id": req.user_id})
     
-    if HAS_KG and kg and kg.is_connected:
+    if HAS_KG and get_kg() and get_kg().is_connected:
         query = """
         MERGE (u:User {user_id: $user_id})
         SET u.name = $name,
@@ -912,7 +911,7 @@ async def onboarding_complete(req: OnboardingCompleteRequest):
             u.created_at = $now
         """
         try:
-            kg.query(query, {
+            get_kg().query(query, {
                 "user_id": req.user_id,
                 "name": name,
                 "monk_scale": monk_scale,

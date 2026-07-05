@@ -13,7 +13,7 @@ import logging
 import threading
 from datetime import datetime, timezone
 from shaaru_brain import _get_db
-from knowledge_graph import kg
+from knowledge_graph import get_kg
 
 log = logging.getLogger("shaaru.signals")
 
@@ -21,8 +21,8 @@ def _check_global_loop_trigger(db) -> None:
     """Fire pattern detection every 500 total interactions."""
     try:
         # Count total signal edges across all users in Neo4j
-        from knowledge_graph import kg
-        result = kg.query("""
+        from knowledge_graph import get_kg
+        result = get_kg().query("""
             MATCH ()-[r:SAVED|SKIPPED|PURCHASED]->()
             RETURN count(r) as total
         """)
@@ -80,7 +80,7 @@ def collect_signal(user_id: str, signal_type: str, product_id: str, metadata: di
             db["sessions"].insert_one(new_session)
 
         # 2. Neo4j Edge
-        if kg.is_connected:
+        if get_kg().is_connected:
             rel_type = signal_type.upper()
             if rel_type in ["SAVED", "SKIPPED", "PURCHASED"]:
                 cypher = f"""
@@ -90,7 +90,7 @@ def collect_signal(user_id: str, signal_type: str, product_id: str, metadata: di
                 SET r.timestamp = $now,
                     r.count = coalesce(r.count, 0) + 1
                 """
-                kg.query(cypher, {
+                get_kg().query(cypher, {
                     "user_id": user_id,
                     "product_id": product_id,
                     "signal_type": signal_type,

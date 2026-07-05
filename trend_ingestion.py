@@ -36,7 +36,7 @@ try:
 except ImportError:
     nvidia_call = None
 
-from knowledge_graph import kg
+from knowledge_graph import get_kg
 
 from trend_sources import (
     HASHTAG_SEARCHES,
@@ -328,7 +328,7 @@ def save_aesthetic_to_neo4j(aesthetic: dict) -> bool:
     """
     Create/merge Aesthetic node in Neo4j with Occasion and BodyType relationships.
     """
-    if not kg.is_connected:
+    if not get_kg().is_connected:
         print("[FAIL] Neo4j not connected — skipping graph write")
         return False
 
@@ -337,7 +337,7 @@ def save_aesthetic_to_neo4j(aesthetic: dict) -> bool:
         now = datetime.now(timezone.utc).isoformat()
 
         # Merge Aesthetic node
-        kg.query(
+        get_kg().query(
             """
             MERGE (a:Aesthetic {name: $name})
             SET a.description = $description,
@@ -355,7 +355,7 @@ def save_aesthetic_to_neo4j(aesthetic: dict) -> bool:
 
         # Link to Occasion nodes
         for occasion in aesthetic.get("occasion", []):
-            kg.query(
+            get_kg().query(
                 """
                 MERGE (a:Aesthetic {name: $name})
                 MERGE (o:Occasion {name: $occasion})
@@ -366,7 +366,7 @@ def save_aesthetic_to_neo4j(aesthetic: dict) -> bool:
 
         # Link to BodyType nodes
         for body_type in aesthetic.get("body_compatibility", []):
-            kg.query(
+            get_kg().query(
                 """
                 MERGE (a:Aesthetic {name: $name})
                 MERGE (b:BodyType {name: $body_type})

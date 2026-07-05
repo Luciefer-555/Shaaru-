@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
-from knowledge_graph import kg
-results = kg.query('''
+from knowledge_graph import get_kg
+results = get_kg().query('''
 MATCH (u:User)-[r]->(p:Product)
 WHERE u.user_id = "demo_user_001"
 RETURN type(r) as rel_type, p.product_id as product, r.count as count

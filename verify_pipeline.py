@@ -16,7 +16,7 @@ log = logging.getLogger("shaaru.verify")
 def verify():
     """Run all pipeline verification checks."""
     from shaaru_brain import _get_db
-    from knowledge_graph import kg
+    from knowledge_graph import get_kg
 
     print("\n" + "=" * 60)
     print("  SHAARU Pipeline Verification")
@@ -65,8 +65,8 @@ def verify():
 
     # ── Check 3: Neo4j Aesthetic count ───────────────────────────
     print("\n── Check 3: Neo4j Aesthetic nodes ──")
-    if kg.is_connected:
-        result = kg.query("MATCH (a:Aesthetic) RETURN count(a) AS count")
+    if get_kg().is_connected:
+        result = get_kg().query("MATCH (a:Aesthetic) RETURN count(a) AS count")
         if result:
             count = result[0].get("count", 0)
             print(f"  Aesthetic nodes: {count}")

@@ -13,7 +13,7 @@ Run manually: python pattern_detector.py
 import logging
 from datetime import datetime, timezone
 from shaaru_brain import _get_db
-from knowledge_graph import kg
+from knowledge_graph import get_kg
 
 log = logging.getLogger("shaaru.patterns")
 
@@ -24,7 +24,7 @@ def run_pattern_detection():
     print(f"[OK] Pattern detection complete — {save_written + skip_written} patterns written")
 
 def _find_save_patterns() -> int:
-    if not kg.is_connected:
+    if not get_kg().is_connected:
         return 0
         
     cypher = """
@@ -37,7 +37,7 @@ def _find_save_patterns() -> int:
     ORDER BY save_count DESC
     LIMIT 20
     """
-    results = kg.query(cypher)
+    results = get_kg().query(cypher)
     written = 0
     now = datetime.now(timezone.utc).isoformat()
     
@@ -54,7 +54,7 @@ def _find_save_patterns() -> int:
             SET r.save_rate = $save_count,
                 r.last_updated = $now
             """
-            kg.query(write_cypher, {
+            get_kg().query(write_cypher, {
                 "monk": r["monk"],
                 "body_type": r["body_type"],
                 "aesthetic": r["aesthetic"],
@@ -67,7 +67,7 @@ def _find_save_patterns() -> int:
     return written
 
 def _find_skip_patterns() -> int:
-    if not kg.is_connected:
+    if not get_kg().is_connected:
         return 0
         
     cypher = """
@@ -80,7 +80,7 @@ def _find_skip_patterns() -> int:
     ORDER BY skip_count DESC
     LIMIT 20
     """
-    results = kg.query(cypher)
+    results = get_kg().query(cypher)
     written = 0
     now = datetime.now(timezone.utc).isoformat()
     
@@ -97,7 +97,7 @@ def _find_skip_patterns() -> int:
             SET r.skip_rate = $skip_count,
                 r.last_updated = $now
             """
-            kg.query(write_cypher, {
+            get_kg().query(write_cypher, {
                 "monk": r["monk"],
                 "body_type": r["body_type"],
                 "aesthetic": r["aesthetic"],
@@ -111,7 +111,7 @@ def _find_skip_patterns() -> int:
 
 def get_pattern_context(user_id: str) -> str:
     db = _get_db()
-    if db is None or not kg.is_connected:
+    if db is None or not get_kg().is_connected:
         return ""
         
     user = db["users"].find_one({"user_id": user_id})
@@ -132,7 +132,7 @@ def get_pattern_context(user_id: str) -> str:
     RETURN a.name AS aesthetic, r.save_rate AS score
     ORDER BY score DESC LIMIT 5
     """
-    results = kg.query(cypher, {"monk": monk, "body": body_type})
+    results = get_kg().query(cypher, {"monk": monk, "body": body_type})
     if not results:
         return ""
         
@@ -158,7 +158,7 @@ def detect_style_evolution(user_id: str, db) -> dict | None:
     Called after every 10 sessions for a user.
     """
     try:
-        from knowledge_graph import kg
+        from knowledge_graph import get_kg
         
         # Get onboarding aesthetic from MongoDB
         user = db["users"].find_one({"user_id": user_id})
@@ -173,7 +173,7 @@ def detect_style_evolution(user_id: str, db) -> dict | None:
             return None
         
         # Get top 3 aesthetics from recent behavioral signals in Neo4j
-        results = kg.query("""
+        results = get_kg().query("""
             MATCH (u:User {user_id: $user_id})-[r:SAVED]->(p:Product)
             WHERE p.aesthetic IS NOT NULL
             RETURN p.aesthetic AS aesthetic, count(r) AS save_count
@@ -207,7 +207,7 @@ def detect_style_evolution(user_id: str, db) -> dict | None:
             )
             
             # Write evolution edge to Neo4j
-            kg.query("""
+            get_kg().query("""
                 MATCH (u:User {user_id: $user_id})
                 MERGE (a:Aesthetic {name: $new_aesthetic})
                 MERGE (u)-[r:EVOLVED_TO]->(a)

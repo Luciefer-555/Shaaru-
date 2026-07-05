@@ -132,10 +132,10 @@ except (ImportError, SyntaxError, ValueError):
 
 # ── Knowledge graph (optional) ───────────────────────────────────
 try:
-    from knowledge_graph import kg
+    from knowledge_graph import get_kg
     HAS_KG = True
 except ImportError:
-    kg = None
+    get_kg = lambda: None
     HAS_KG = False
     log.info("knowledge_graph not available — running without Neo4j")
 
@@ -295,7 +295,7 @@ def _build_zone2(user: dict) -> str:
             lines.append(f"Style icon: {taste['style_icon']}")
 
         # Pull top behavioral edges and graph context from Neo4j
-        if HAS_KG and kg:
+        if HAS_KG and get_kg():
             try:
                 sessions_count = user.get("meta", {}).get("sessions_count", 0)
                 if sessions_count > 0:
@@ -385,11 +385,11 @@ def _query_behavioral_edges(user_id: str) -> list[str]:
     Returns list of readable signal strings.
     Falls back to empty list if user has no graph history yet.
     """
-    if not (HAS_KG and kg):
+    if not (HAS_KG and get_kg()):
         return []
     try:
         # Use raw driver query if available
-        driver = getattr(kg, "driver", None)
+        driver = getattr(get_kg(), "driver", None)
         if not driver:
             return []
 
@@ -787,11 +787,11 @@ def chat_with_riley(
     # ── Detect focus item for KG enrichment ──────────────────────
     focus_item = detect_focus_item(message)
     focus_context = ""
-    if focus_item and HAS_KG and kg:
+    if focus_item and HAS_KG and get_kg():
         try:
             log.info(f"[BRAIN] Detected focus item: {focus_item}. Querying Neo4j...")
-            if hasattr(kg, "query_item_pairings"):
-                pairings = kg.query_item_pairings(focus_item)
+            if hasattr(get_kg(), "query_item_pairings"):
+                pairings = get_kg().query_item_pairings(focus_item)
                 if pairings:
                     pairs_str = ", ".join(
                         f"{p.get('paired_item', '?')}" for p in pairings[:5]
@@ -938,10 +938,10 @@ def chat_with_riley_cached(
 
     focus_item    = detect_focus_item(message)
     focus_context = ""
-    if focus_item and HAS_KG and kg:
+    if focus_item and HAS_KG and get_kg():
         try:
-            if hasattr(kg, "query_item_pairings"):
-                pairings = kg.query_item_pairings(focus_item)
+            if hasattr(get_kg(), "query_item_pairings"):
+                pairings = get_kg().query_item_pairings(focus_item)
                 if pairings:
                     pairs_str = ", ".join(
                         p.get("paired_item", "?") for p in pairings[:5]

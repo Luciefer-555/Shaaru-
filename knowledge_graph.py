@@ -382,21 +382,26 @@ class KnowledgeGraph:
 
 
 # ── Singleton ────────────────────────────────────────────────────
-try:
-    kg = KnowledgeGraph()
-except Exception as e:
-    log.warning(f"[KG] Failed to initialize: {e}")
+kg = None
 
-    class _FallbackKG:
-        driver = None
-        is_connected = False
-        def query(self, *a, **kw): return []
-        def query_pairings(self, *a, **kw): return []
-        def query_item_pairings(self, *a, **kw): return []
-        def query_influencer_picks(self, *a, **kw): return []
-        def get_fashion_context(self, *a, **kw): return ""
-        def get_style_graph_context(self, *a, **kw): return ""
-        def sync_product_document(self, *a, **kw): return False
-        def close(self): pass
+class _FallbackKG:
+    driver = None
+    is_connected = False
+    def query(self, *a, **kw): return []
+    def query_pairings(self, *a, **kw): return []
+    def query_item_pairings(self, *a, **kw): return []
+    def query_influencer_picks(self, *a, **kw): return []
+    def get_fashion_context(self, *a, **kw): return ""
+    def get_style_graph_context(self, *a, **kw): return ""
+    def sync_product_document(self, *a, **kw): return False
+    def close(self): pass
 
-    kg = _FallbackKG()
+def get_kg():
+    global kg
+    if kg is None:
+        try:
+            kg = KnowledgeGraph()
+        except Exception as e:
+            log.warning(f"[KG] Failed to initialize: {e}")
+            kg = _FallbackKG()
+    return kg

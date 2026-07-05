@@ -28,10 +28,10 @@ def run_global_loop() -> dict:
         print(f"[WARN] pattern_detector failed: {e}")
         
     try:
-        from knowledge_graph import kg
+        from knowledge_graph import get_kg
         patterns_json = "[]"
-        if kg and kg.is_connected:
-            result = kg.query("MATCH (p:Pattern) WHERE p.confidence > 0.7 RETURN p LIMIT 20")
+        if get_kg() and get_kg().is_connected:
+            result = get_kg().query("MATCH (p:Pattern) WHERE p.confidence > 0.7 RETURN p LIMIT 20")
             patterns = [record["p"] for record in result]
             patterns_json = json.dumps(patterns, default=str)
     except Exception as e:
