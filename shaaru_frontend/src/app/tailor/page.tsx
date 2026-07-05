@@ -1128,7 +1128,7 @@ export default function TailorPage() {
                 }}
               >
                 <div className="text-[#39FF14] font-bold text-xs uppercase mb-1">
-                  // {touchOverlay.label}
+                  {touchOverlay.label}
                 </div>
                 <div className="text-white text-xs leading-snug">
                   {touchOverlay.comment}
