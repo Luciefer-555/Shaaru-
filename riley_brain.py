@@ -301,8 +301,6 @@ def riley_think(user_message: str, user_id: str, conversation_history: list = No
 
   # --- inject live user context ---
   user_context_block = ""
-  import time
-  print(f'[TIMING] riley_think start MongoDB user context: {time.time()}')
   try:
     db = _get_db()
     if db is not None:
@@ -345,7 +343,6 @@ def riley_think(user_message: str, user_id: str, conversation_history: list = No
                              "\n".join(f"- {l}" for l in lines)
   except Exception as e:
     logger.warning(f"Could not load user context for {user_id}: {e}")
-  print(f'[TIMING] riley_think end MongoDB user context: {time.time()}')
   # ---------------------------------
 
   SHAARU_SYSTEM = f"""You are SHAARU — a sharp, warm, expert AI stylist for Indian fashion. You know fabrics, construction, sourcing, and aesthetics deeply.
@@ -460,14 +457,12 @@ RULES:
   # ── Fast path: skip tool overhead for simple conversational messages ──
   if not image_base64 and not _needs_tools(user_message):
     try:
-      print(f'[TIMING] riley_think start fast path NIM call: {time.time()}')
       fast_resp = client.chat.completions.create(
         model=MODEL_TEXT,
         messages=messages,
         max_tokens=180,
         timeout=18
       )
-      print(f'[TIMING] riley_think end fast path NIM call: {time.time()}')
       return {
         'reply': fast_resp.choices[0].message.content or "hey! what's on your mind?",
         'tool_calls': [],
@@ -498,13 +493,9 @@ RULES:
     )
   try:
     try:
-      print(f'[TIMING] riley_think start Turn 1 NIM call: {time.time()}')
       response = _call_turn1()
-      print(f'[TIMING] riley_think end Turn 1 NIM call: {time.time()}')
     except Exception:
-      print(f'[TIMING] riley_think start Turn 1 fallback NIM call: {time.time()}')
       response = _fallback_turn1()
-      print(f'[TIMING] riley_think end Turn 1 fallback NIM call: {time.time()}')
   except Exception as e:
     logger.warning(f"Turn 1 timeout or error: {e}")
     return {
@@ -527,9 +518,7 @@ RULES:
       except:
         arguments = {}
       
-      print(f'[TIMING] riley_think start tool call {tool_name}: {time.time()}')
       tool_result = execute_tool(tool_name, arguments, user_id)
-      print(f'[TIMING] riley_think end tool call {tool_name}: {time.time()}')
       
       tool_calls_made.append({
         'tool': tool_name,
@@ -562,13 +551,9 @@ RULES:
       )
     try:
       try:
-        print(f'[TIMING] riley_think start Turn 3 NIM call: {time.time()}')
         final_response = _call_turn3()
-        print(f'[TIMING] riley_think end Turn 3 NIM call: {time.time()}')
       except Exception:
-        print(f'[TIMING] riley_think start Turn 3 fallback NIM call: {time.time()}')
         final_response = _fallback_turn3()
-        print(f'[TIMING] riley_think end Turn 3 fallback NIM call: {time.time()}')
       final_text = final_response.choices[0].message.content
     except Exception as e:
       logger.warning(f"Turn 3 timeout or error: {e}")

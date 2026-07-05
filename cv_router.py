@@ -265,13 +265,10 @@ async def cv_touch(request: Request):
             f"No hashtags, no bullet points, just talk.]"
         )
         
-        import time
-        print(f'[TIMING] cv_touch start riley_think: {time.time()}')
         result = riley_think(
             user_message=prompt,
             user_id=user_id
         )
-        print(f'[TIMING] cv_touch end riley_think: {time.time()}')
         
         comment = result.get("reply", "")
         
@@ -281,7 +278,6 @@ async def cv_touch(request: Request):
             comment = " ".join(words[:25]) + "."
         
         # Log touch event to MongoDB
-        print(f'[TIMING] cv_touch start MongoDB touch_events insert: {time.time()}')
         try:
             try:
                 from database import get_db
@@ -299,7 +295,6 @@ async def cv_touch(request: Request):
                 })
         except Exception:
             pass  # non-blocking
-        print(f'[TIMING] cv_touch end MongoDB touch_events insert: {time.time()}')
         
         return {"comment": comment, "item": item_label}
     
