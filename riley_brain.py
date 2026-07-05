@@ -485,7 +485,7 @@ RULES:
       tools=SHAARU_TOOLS,
       tool_choice='auto',
       max_tokens=300,
-      timeout=25
+      timeout=7
     )
   def _fallback_turn1():
     return client.chat.completions.create(
