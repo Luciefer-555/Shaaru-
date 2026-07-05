@@ -50,9 +50,9 @@ greenlet==3.5.1
 neo4j==6.2.0
 
 # ── Computer vision (CPU only) ───────────────────────────────────
-opencv-python==4.13.0.92
-pillow==11.1.0
-numpy==2.5.0
+opencv-python-headless>=4.10.0,<4.11.0
+pillow>=10.4.0,<11.0.0
+numpy>=1.26.0,<2.3.0
 supervision==0.29.0.post0
 
 # ── Colour science (CPU) ─────────────────────────────────────────
@@ -109,7 +109,8 @@ loguru==0.7.3
 python-dotenv==1.2.2
 tqdm==4.68.2
 packaging==26.2
-click==8.4.2
+click>=7.1,<8.2
 RapidFuzz==3.14.5
 sentinels==1.1.1
 six==1.17.0
+beautifulsoup4>=4.12.0
