@@ -1,0 +1,389 @@
+{
+  "model_id": "fabricclassv2/2",
+  "timestamp": "2026-07-06T14:03:59Z",
+  "summary": {
+    "total_tested": 13,
+    "overall_accuracy_pct": 7.7,
+    "avg_latency_sec": 2.552,
+    "confident_errors_count": 11
+  },
+  "category_breakdown": {
+    "Denim": {
+      "total": 3,
+      "correct": 0
+    },
+    "Knit": {
+      "total": 3,
+      "correct": 0
+    },
+    "Leather": {
+      "total": 2,
+      "correct": 0
+    },
+    "Woven / Linen": {
+      "total": 1,
+      "correct": 0
+    },
+    "Woven / Poplin": {
+      "total": 1,
+      "correct": 0
+    },
+    "Indian D2C": {
+      "total": 3,
+      "correct": 1
+    }
+  },
+  "detailed_results": [
+    {
+      "filename": "01_denim_jeans.jpg",
+      "category": "Denim",
+      "expected_fabric": "Denim",
+      "shaaru_baseline": "Denim / Heavy Cotton (Nemotron)",
+      "roboflow_prediction": "Cotton",
+      "confidence": 0.9876,
+      "latency_sec": 6.385,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "4c05d576-c8d0-4ea5-8511-2800961979ab",
+        "time": 0.012444289866834879,
+        "image": {
+          "width": 600,
+          "height": 900
+        },
+        "predictions": [
+          {
+            "class": "Cotton",
+            "class_id": 2,
+            "confidence": 0.9876
+          }
+        ],
+        "top": "Cotton",
+        "confidence": 0.9876
+      }
+    },
+    {
+      "filename": "02_denim_jacket.jpg",
+      "category": "Denim",
+      "expected_fabric": "Denim",
+      "shaaru_baseline": "Denim / Structured Cotton (Nemotron)",
+      "roboflow_prediction": "Linen",
+      "confidence": 0.6175,
+      "latency_sec": 1.491,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "f3a615e7-0f76-4e82-8cf6-0aa550798cd0",
+        "time": 0.005751425866037607,
+        "image": {
+          "width": 600,
+          "height": 399
+        },
+        "predictions": [
+          {
+            "class": "Linen",
+            "class_id": 0,
+            "confidence": 0.6175
+          }
+        ],
+        "top": "Linen",
+        "confidence": 0.6175
+      }
+    },
+    {
+      "filename": "03_denim_coord.jpg",
+      "category": "Denim",
+      "expected_fabric": "Denim",
+      "shaaru_baseline": "Structured Denim (SHAARU Catalog)",
+      "roboflow_prediction": "Cotton",
+      "confidence": 0.7066,
+      "latency_sec": 1.841,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "c535873f-9f25-4081-b4e5-8be05dbd11be",
+        "time": 0.0076832519844174385,
+        "image": {
+          "width": 600,
+          "height": 800
+        },
+        "predictions": [
+          {
+            "class": "Cotton",
+            "class_id": 2,
+            "confidence": 0.7066
+          }
+        ],
+        "top": "Cotton",
+        "confidence": 0.7066
+      }
+    },
+    {
+      "filename": "04_ribbed_knit_sweater.jpg",
+      "category": "Knit",
+      "expected_fabric": "Ribbed Knit",
+      "shaaru_baseline": "Ribbed Knit / Wool Blend (Nemotron)",
+      "roboflow_prediction": "Cotton",
+      "confidence": 0.9751,
+      "latency_sec": 1.156,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "c86fbea6-b547-41a9-9a5b-f673df0bd24f",
+        "time": 0.008101189974695444,
+        "image": {
+          "width": 600,
+          "height": 750
+        },
+        "predictions": [
+          {
+            "class": "Cotton",
+            "class_id": 2,
+            "confidence": 0.9751
+          }
+        ],
+        "top": "Cotton",
+        "confidence": 0.9751
+      }
+    },
+    {
+      "filename": "05_jersey_knit_tshirt.jpg",
+      "category": "Knit",
+      "expected_fabric": "Jersey Knit",
+      "shaaru_baseline": "Cotton Jersey / T-Shirt Knit (Nemotron)",
+      "roboflow_prediction": "Cotton",
+      "confidence": 0.5774,
+      "latency_sec": 2.618,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "df0e325b-fbf9-4e2d-9a77-332756d1d6e1",
+        "time": 0.007430857978761196,
+        "image": {
+          "width": 600,
+          "height": 900
+        },
+        "predictions": [
+          {
+            "class": "Cotton",
+            "class_id": 2,
+            "confidence": 0.5774
+          }
+        ],
+        "top": "Cotton",
+        "confidence": 0.5774
+      }
+    },
+    {
+      "filename": "06_cable_knit_cardigan.jpg",
+      "category": "Knit",
+      "expected_fabric": "Cable Knit",
+      "shaaru_baseline": "Heavy Knit / Wool (LLaMA 90B)",
+      "roboflow_prediction": "Cotton",
+      "confidence": 0.9582,
+      "latency_sec": 1.898,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "ba8e0895-f0d1-451c-bb13-dd8fa4cc8164",
+        "time": 0.005530952010303736,
+        "image": {
+          "width": 600,
+          "height": 451
+        },
+        "predictions": [
+          {
+            "class": "Cotton",
+            "class_id": 2,
+            "confidence": 0.9582
+          }
+        ],
+        "top": "Cotton",
+        "confidence": 0.9582
+      }
+    },
+    {
+      "filename": "07_genuine_leather_jacket.jpg",
+      "category": "Leather",
+      "expected_fabric": "Genuine Leather",
+      "shaaru_baseline": "Genuine Leather / Heavy Sheen (Nemotron)",
+      "roboflow_prediction": "Wool",
+      "confidence": 0.6077,
+      "latency_sec": 2.425,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "000e5b93-19c6-4ef4-b331-b5b96dbdd7e2",
+        "time": 0.008096209727227688,
+        "image": {
+          "width": 600,
+          "height": 800
+        },
+        "predictions": [
+          {
+            "class": "Wool",
+            "class_id": 1,
+            "confidence": 0.6077
+          }
+        ],
+        "top": "Wool",
+        "confidence": 0.6077
+      }
+    },
+    {
+      "filename": "08_faux_vegan_leather_coat.jpg",
+      "category": "Leather",
+      "expected_fabric": "Faux Leather / Vegan",
+      "shaaru_baseline": "Faux Leather / Polyurethane (Holy Headen DB)",
+      "roboflow_prediction": "Wool",
+      "confidence": 0.9941,
+      "latency_sec": 6.86,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "5224db73-ac2f-49ae-8f04-a0e83101197c",
+        "time": 0.0077017429284751415,
+        "image": {
+          "width": 600,
+          "height": 900
+        },
+        "predictions": [
+          {
+            "class": "Wool",
+            "class_id": 1,
+            "confidence": 0.9941
+          }
+        ],
+        "top": "Wool",
+        "confidence": 0.9941
+      }
+    },
+    {
+      "filename": "09_woven_linen_shirt.jpg",
+      "category": "Woven / Linen",
+      "expected_fabric": "Linen",
+      "shaaru_baseline": "Linen / Breathable Woven (Meluku DB)",
+      "roboflow_prediction": "Cotton",
+      "confidence": 0.8476,
+      "latency_sec": 1.456,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "5b34a0c1-c850-457c-ba8b-2c3717c055f6",
+        "time": 0.0060719819739460945,
+        "image": {
+          "width": 600,
+          "height": 480
+        },
+        "predictions": [
+          {
+            "class": "Cotton",
+            "class_id": 2,
+            "confidence": 0.8476
+          }
+        ],
+        "top": "Cotton",
+        "confidence": 0.8476
+      }
+    },
+    {
+      "filename": "10_cotton_poplin_shirt.jpg",
+      "category": "Woven / Poplin",
+      "expected_fabric": "Cotton Poplin",
+      "shaaru_baseline": "Cotton Poplin / Structured Woven (Nemotron)",
+      "roboflow_prediction": "Linen",
+      "confidence": 0.794,
+      "latency_sec": 1.136,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "d283b18a-945f-485d-876e-6bb84bc12261",
+        "time": 0.007299304008483887,
+        "image": {
+          "width": 600,
+          "height": 899
+        },
+        "predictions": [
+          {
+            "class": "Linen",
+            "class_id": 0,
+            "confidence": 0.794
+          }
+        ],
+        "top": "Linen",
+        "confidence": 0.794
+      }
+    },
+    {
+      "filename": "11_torani_silk_organza_saree.png",
+      "category": "Indian D2C",
+      "expected_fabric": "Silk Organza",
+      "shaaru_baseline": "Silk Organza (Torani DB Confirmed)",
+      "roboflow_prediction": "Linen",
+      "confidence": 0.9892,
+      "latency_sec": 3.226,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "b6377d32-135f-4249-bf48-1c57e6cf025b",
+        "time": 0.0310229929164052,
+        "image": {
+          "width": 700,
+          "height": 1050
+        },
+        "predictions": [
+          {
+            "class": "Linen",
+            "class_id": 0,
+            "confidence": 0.9892
+          }
+        ],
+        "top": "Linen",
+        "confidence": 0.9892
+      }
+    },
+    {
+      "filename": "12_picante_ruched_slip_dress.jpg",
+      "category": "Indian D2C",
+      "expected_fabric": "Satin / Crepe",
+      "shaaru_baseline": "Satin Crepe / Silk Blend (Studio Picante DB)",
+      "roboflow_prediction": "Linen",
+      "confidence": 0.9612,
+      "latency_sec": 1.113,
+      "is_match": false,
+      "raw_response": {
+        "inference_id": "652f9c13-593f-4517-a61e-dfde3acee81c",
+        "time": 0.007660971954464912,
+        "image": {
+          "width": 600,
+          "height": 831
+        },
+        "predictions": [
+          {
+            "class": "Linen",
+            "class_id": 0,
+            "confidence": 0.9612
+          }
+        ],
+        "top": "Linen",
+        "confidence": 0.9612
+      }
+    },
+    {
+      "filename": "13_nicobar_linen_kurta.jpg",
+      "category": "Indian D2C",
+      "expected_fabric": "Linen Kurta",
+      "shaaru_baseline": "Linen / Geometric Woven (Nicobar DB)",
+      "roboflow_prediction": "Linen",
+      "confidence": 0.9799,
+      "latency_sec": 1.575,
+      "is_match": true,
+      "raw_response": {
+        "inference_id": "c99203b5-ad5c-4460-9868-cfa70becd752",
+        "time": 0.008343914058059454,
+        "image": {
+          "width": 600,
+          "height": 750
+        },
+        "predictions": [
+          {
+            "class": "Linen",
+            "class_id": 0,
+            "confidence": 0.9799
+          }
+        ],
+        "top": "Linen",
+        "confidence": 0.9799
+      }
+    }
+  ]
+}
