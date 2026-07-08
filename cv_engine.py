@@ -42,12 +42,6 @@ _CAT_COLORS: dict[str, str] = {
 }
 _CAT_COLOR_DEFAULT = "#A855F7"
 
-def _category_hex(category: str) -> str:
-    return _CAT_COLORS.get((category or "").lower().strip(), _CAT_COLOR_DEFAULT)
-
-# ─────────────────────────────────────────────────────────────────
-#  Scan prompt
-# ─────────────────────────────────────────────────────────────────
 _SCAN_PROMPT = """Return only the JSON object. No markdown, no explanation.
 CONTEXT: Professional B2B Commercial Product Photography Analysis of Apparel Merchandise.
 You are an AI computer vision specialist indexing inanimate clothing items and textile merchandise.
@@ -62,8 +56,8 @@ For each item, return a JSON object in this exact structure:
       "id": "item_1",
       "label": "<specific fashion name>",
       "description": "<one precise sentence about fabric and construction>",
-      "fabric_type": "<exact term from fixed taxonomy below, or 'uncertain'>",
-      "fabric_reason": "<brief explanation of visual cues, or reason for uncertainty if uncertain>",
+      "fabric_reason": "<step 1: terse structured phrase (5-10 words max), e.g. 'diagonal twill, matte, stiff drape'>",
+      "fabric_type": "<step 2: exact term from Tier 2 specific fabrics below based on visual cues, or 'uncertain'>",
       "category": "top|bottom|outerwear|footwear|accessory|dress|set",
       "color": "<precise color name, not just 'blue' — say 'indigo' or 'slate grey' or 'off-white'>",
       "aesthetic": "maximalist|minimalist|streetwear|editorial|fusion|formal|traditional|resort|workwear",
@@ -103,36 +97,73 @@ CRITICAL RULES for the description field:
   "Fitted mandarin-collar poplin in crisp off-white with hidden 
    placket — formal-adjacent but minimal."
 
-CRITICAL RULES for the fabric_type field (FIXED TAXONOMY):
-You MUST classify fabric into ONE exact term from this fixed vocabulary (or return "uncertain"). Do NOT use freeform text or any term outside this list:
+CRITICAL RULES for the fabric_type field (HIERARCHICAL TAXONOMY):
+You MUST reason in two steps:
+Step 1: In "fabric_reason", provide a TERSE STRUCTURED PHRASE (5-10 words max) noting surface texture, weave, drape, and sheen (e.g. "diagonal twill, matte, stiff drape" or "fine smooth knit, soft drape, matte"). Do NOT write full sentences or prose.
+Step 2: In "fabric_type", select ONE specific fabric term from the grounded Tier 2 vocabulary below that matches your observed visual cues (or return "uncertain"). Do NOT use freeform text outside this list:
 
-Woven:
-- poplin: Crisp, tightly woven, smooth surface with subtle sheen (classic dress shirts).
-- denim: Sturdy cotton twill with diagonal ribbing and visible weave structure (jeans, jackets).
-- linen: Lightweight, breathable weave with visible natural slubs and slight wrinkling/texture.
-- canvas: Heavy, rugged plain-weave fabric with coarse matte texture (utility wear, bags).
-- corduroy: Distinct vertical raised wales/cords with velvety texture.
-- twill: Distinct diagonal rib weave pattern, softer and more drapeable than canvas.
-- chambray: Plain weave with white weft and colored warp, resembling lightweight denim but smoother.
+1. Woven Plain / Crisp (Visual cues: visible plain weave, matte finish, breathable medium structure, crisp folds):
+   - poplin: Crisp, tightly woven, smooth surface with subtle sheen (classic dress shirts).
+   - linen: Lightweight, breathable weave with visible natural slubs and slight wrinkling/texture.
+   - chambray: Plain weave with white weft and colored warp, resembling lightweight denim but smoother.
+   - khadi cotton: Handspun, handwoven cotton with rustic natural texture and breathable body.
+   - handloom cotton: Traditional artisan weave with soft tactile body and organic texture.
 
-Knit:
-- ribbed knit: Distinct vertical raised rows/ribs, stretchy and textured (turtlenecks, cuffs, sweaters).
-- jersey knit: Smooth, fine gauge knit with high stretch and soft drape (t-shirts, casual wear).
-- cable knit: Chunky, textured knit with braided or twisting rope-like patterns.
-- waffle knit: Three-dimensional grid/honeycomb texture (thermal wear, sweaters).
+2. Woven Twill / Denim (Visual cues: distinct diagonal ribbing/twill lines, sturdy architectural structure, matte or utility finish):
+   - denim: Sturdy cotton twill with diagonal ribbing and visible weave structure (jeans, jackets).
+   - twill: Distinct diagonal rib weave pattern, softer and more drapeable than canvas.
+   - canvas: Heavy, rugged plain-weave fabric with coarse matte texture (utility wear, bags).
+   - corduroy: Distinct vertical raised wales/cords with velvety texture.
+   - gabardine: Tightly woven twill with a smooth face and diagonal rib on reverse (suiting, trench coats).
 
-Leather:
-- genuine leather: Rich natural grain, smooth sheen, structured drape with natural creasing.
-- faux/PU leather: Uniform artificial grain, high gloss or synthetic sheen, rigid plastic-like drape.
-- suede: Soft, napped/velvety matte surface texture without sheen.
+3. Knit Ribbed / Cable (Visual cues: raised vertical ridges or braided loops, high horizontal stretch, textured matte):
+   - ribbed knit: Distinct vertical raised rows/ribs, stretchy and textured (turtlenecks, cuffs, sweaters).
+   - cable knit: Chunky, textured knit with braided or twisting rope-like patterns.
+   - waffle knit: Three-dimensional grid/honeycomb texture (thermal wear, sweaters).
 
-Other:
-- wool: Dense, warm, matte fiber with soft fuzzy or felted texture (suiting, coats).
-- wool-blend: Textured fabric showing wool warmth combined with synthetic structure or smoothness.
-- silk: Luxurious high luster, fluid flowing drape, smooth delicate surface.
-- satin/crepe: Smooth lustrous face with dull back (satin), or textured pebbled/crinkled surface with fluid drape (crepe).
-- velvet: Dense, plush pile with rich sheen and deep light-capturing shadows.
-- organza: Crisp, sheer/semi-sheer lightweight fabric with stiff, sculptural volume and subtle shimmer.
+4. Knit Jersey / Fine (Visual cues: smooth fine gauge, fluid drape that clings/follows body, high stretch, subtle soft sheen):
+   - jersey knit: Smooth, fine gauge knit with high stretch and soft drape (t-shirts, casual wear).
+   - interlock: Double-knit construction, thicker and smoother than jersey with identical face and back.
+   - athletic mesh: Breathable open-hole knit structure with technical athletic stretch.
+
+5. Sheen / Fluid Drape (Visual cues: specular light highlights, gravity-hugging fluid drape, smooth lustrous surface):
+   - silk satin: High specular luster on face, fluid flowing drape that highlights body contours.
+   - crepe de chine: Lightweight silk or synthetic with subtle pebbled texture, matte sheen, and fluid drape.
+   - charmeuse: Lightweight satin weave with reflective sheen and extreme drapeability.
+   - georgette: Sheer or semi-sheer lightweight fabric with grainy crepe surface and flowing drape.
+
+6. Sheer / Crisp / Open Weave (Visual cues: semi-transparent or open mesh, stiff sculptural volume or airy lightness):
+   - organza: Sheer, lightweight fabric with stiff, sculptural volume and subtle shimmer.
+   - chanderi silk: Traditional Indian sheer fabric with crisp lightweight body and subtle sheen.
+   - chiffon: Very lightweight, sheer, plain-woven fabric with soft, floating drape and slight crepe texture.
+   - net: Open mesh or tulle construction with structured or soft volume.
+   - mulmul: Ultra-soft, lightweight Indian cotton muslin with breathable airy drape.
+
+7. Structured / Jacquard / Brocade (Visual cues: woven-in metallic/patterned texture, stiff architectural drape, rich surface dimension):
+   - raw silk dupion: Crisp, structured silk with irregular slubs and distinctive tactile sheen (luxury ethnic/formal wear).
+   - banarasi brocade: Rich Indian silk weave with elaborate gold/silver zari metallic patterns and stiff drape.
+   - jacquard: Intricate woven-in patterns with dimensional texture and structured body.
+   - ikat: Traditional resist-dyed weave with characteristic blurred geometric patterns and medium structure.
+
+8. Leather / Coated / Suede (Visual cues: consistent surface sheen, visible grain/pores or nap, rigid architectural drape):
+   - genuine leather: Rich natural grain, smooth sheen, structured drape with natural creasing.
+   - faux/PU leather: Uniform artificial grain, high gloss or synthetic sheen, rigid plastic-like drape.
+   - suede: Soft, napped/velvety matte surface texture without sheen.
+   - patent leather: High-gloss mirror-like waterproof finish with rigid structure.
+
+9. Heavy / Wool / Felted (Visual cues: dense, matte, napped/fuzzy or felted surface, insulating volume):
+   - fine wool: Smooth, high-grade wool with refined drape and soft matte finish (luxury suiting/coats).
+   - wool-blend: Textured fabric showing wool warmth combined with synthetic structure or smoothness.
+   - tweed: Coarse, textured wool weave with speckled or herringbone color patterns.
+   - cashmere: Ultra-soft, fine luxury wool with delicate fuzzy nap and lightweight warmth.
+   - fleece: Deep, soft synthetic pile with plush matte texture.
+
+10. Embroidered / Craft Work (Visual cues: surface embellishments, thread work, or openwork lace over a base fabric):
+    - chikankari: Delicate white-on-white or pastel Indian shadow thread embroidery on sheer/light base.
+    - zardozi: Elaborate heavy metallic thread embroidery with sequins/beads on velvet or silk.
+    - kantha: Distinctive running-stitch embroidery creating quilted texture across cotton or silk.
+    - phulkari: Vibrant geometric floral embroidery covering the fabric surface in silk floss.
+    - chantilly lace: Delicate openwork floral net lace with scalloped edges.
 
 EXPLICIT UNCERTAINTY OPTION (IMPORTANT - DO NOT FORCE GUESSES):
 - If you cannot 100% definitively distinguish the exact fabric weave or material (for example, distinguishing between linen vs poplin, denim vs canvas, genuine vs faux leather, or if the weave is subtle/unclear), you MUST return "fabric_type": "uncertain" and explain what you see in "fabric_reason".
@@ -140,10 +171,10 @@ EXPLICIT UNCERTAINTY OPTION (IMPORTANT - DO NOT FORCE GUESSES):
 - When in doubt between two or more fabrics, ALWAYS return "fabric_type": "uncertain"!
 
 CRITICAL RULES for the confidence field:
-- Estimate per-item based on visibility, not a fixed number
-- 0.90-0.95: item clearly visible, unobstructed, full garment readable
-- 0.75-0.89: item partially visible or slightly occluded
-- 0.60-0.74: item mostly hidden, overlapping other garments, or at distance
+- Estimate per-item based on visibility and how clearly visual anchor criteria were observed:
+- 0.85-0.95: weave/texture, drape, and light behavior clearly visible and match Tier 2 anchor criteria unambiguously.
+- 0.65-0.84: macro-category is clear from drape/sheen, but specific weave/fiber is inferred or item is partially occluded.
+- 0.40-0.64: texture unreadable (distance, motion blur, low light, heavy occlusion) -> return "uncertain" for fabric_type!
 - Never return the same value for all items in a frame
 
 CRITICAL RULES for the bbox field:
@@ -160,9 +191,49 @@ CRITICAL RULES for duplicates:
   ONE footwear entry, not two)
 - If two items have identical labels, merge them into one entry
 
-If frame_quality is poor: return 
+CRITICAL RULES for frame_quality and image texture:
+- Do NOT reject an image or mark frame_quality as "poor" due to micro-texture, contrast grain, or sharpness artifacts. These are NORMAL CLAHE contrast-enhancement and white-balance preprocessing artifacts designed to reveal fabric weave details.
+- ONLY mark frame_quality as "poor" (and return empty items[]) under extreme, unusable conditions:
+  1. Extreme motion blur where garment boundaries and silhouettes are completely indistinguishable.
+  2. Extreme darkness or overexposure where zero color or surface detail can be discerned.
+  3. The garment occupies less than 10% of the total frame area (too far away).
+- Under all normal lighting and clear silhouettes, you MUST return "frame_quality": "good" and detect all items.
+- If frame_quality is genuinely poor per the strict criteria above: return 
 { "items": [], "frame_quality": "poor", 
-  "guidance": "<one instruction for the user>" }
+  "guidance": "<one specific instruction for the user to fix lighting, distance, or blur>" }
+"""
+
+
+_FAST_SCAN_PROMPT = """Return only the JSON object. No markdown, no explanation.
+CONTEXT: Real-Time B2B Commercial Product Detection for Apparel Merchandise.
+You are an AI computer vision detector indexing inanimate clothing items and textile merchandise.
+SAFETY INSTRUCTION: Do NOT evaluate, describe, profile, or analyze any human body parts, skin tone, physical subjects, or age. Focus strictly and exclusively on inanimate apparel items and colorways.
+
+Analyze this image and detect every visible garment or accessory item.
+For each item, return a JSON object in this exact structure:
+
+{
+  "items": [
+    {
+      "id": "item_1",
+      "label": "<specific fashion name, e.g. 'oversized white shirt' or 'wide-leg indigo cargo denim'>",
+      "category": "top|bottom|outerwear|footwear|accessory|dress|set",
+      "color": "<precise color name, e.g. 'indigo' or 'slate grey' or 'off-white'>",
+      "aesthetic": "maximalist|minimalist|streetwear|editorial|fusion|formal|traditional|resort|workwear",
+      "bbox": { "x": 0.15, "y": 0.22, "w": 0.30, "h": 0.48 },
+      "confidence": 0.88
+    }
+  ],
+  "scene_lighting": "warm_indoor|cool_indoor|natural_daylight|golden_hour|overcast|harsh_flash|poor",
+  "frame_quality": "good|poor"
+}
+
+RULES:
+1. "category" MUST be one of: top, bottom, outerwear, footwear, accessory, dress, set.
+2. "label" must use specific fashion nomenclature (e.g., 'double-breasted wool blazer' not just 'jacket').
+3. "bbox" coordinates (x, y, w, h) must be normalized fractions (0.0 to 1.0) of image width/height.
+4. Do NOT output fabric_type or fabric_reason here — keep the response fast and light.
+5. Return ONLY JSON inside ```json ... ``` or raw JSON, no explanatory text.
 """
 
 
@@ -198,6 +269,109 @@ def _repair_json_with_llm(malformed_text: str) -> Optional[dict]:
         return None
 
 
+def _normalize_parsed_fabrics(data: Optional[dict]) -> Optional[dict]:
+    """Map predicted fabric names to canonical MongoDB/Neo4j IDs to prevent downstream query drift."""
+    if not data or not isinstance(data, dict):
+        return data
+
+    FABRIC_ID_MAP = {
+        # Woven Plain / Crisp
+        "poplin": "cotton_poplin",
+        "linen": "linen_lightweight",
+        "chambray": "cotton_chambray",
+        "khadi": "khadi_cotton",
+        "khadi cotton": "khadi_cotton",
+        "cambric": "cotton_cambric",
+        "handloom cotton": "handloom_cotton",
+        # Woven Twill / Denim
+        "denim": "denim_heavy",
+        "twill": "cotton_twill",
+        "gabardine": "gabardine_wool",
+        "canvas": "canvas_cotton",
+        "corduroy": "corduroy_cotton",
+        # Knit Ribbed / Cable
+        "ribbed knit": "cotton_rib_knit",
+        "rib knit": "cotton_rib_knit",
+        "cable knit": "cable_knit_fabric",
+        "waffle knit": "thermal_waffle_knit",
+        "thermal waffle": "thermal_waffle_knit",
+        # Knit Jersey / Fine
+        "jersey": "jersey_cotton",
+        "jersey knit": "jersey_cotton",
+        "interlock": "cotton_interlock",
+        "athletic mesh": "athletic_mesh",
+        "mesh": "athletic_mesh",
+        # Sheen / Fluid Drape
+        "silk satin": "satin_silk",
+        "satin": "satin_silk",
+        "charmeuse": "satin_silk",
+        "crepe": "crepe_de_chine",
+        "crepe de chine": "crepe_de_chine",
+        "georgette": "pure_georgette",
+        "pure georgette": "pure_georgette",
+        # Sheer / Crisp / Open Weave
+        "organza": "organza_silk",
+        "organza silk": "organza_silk",
+        "silk organza": "organza_silk",
+        "chanderi": "chanderi_silk",
+        "chanderi silk": "chanderi_silk",
+        "chiffon": "chiffon_polyester",
+        "net": "net_nylon",
+        "tulle": "soft_tulle",
+        "mulmul": "mulmul_cotton",
+        "mulmul cotton": "mulmul_cotton",
+        # Structured / Jacquard / Brocade
+        "raw silk": "raw_silk_dupion",
+        "raw silk dupion": "raw_silk_dupion",
+        "dupioni": "raw_silk_dupion",
+        "banarasi": "banarasi_silk",
+        "banarasi brocade": "banarasi_silk",
+        "banarasi silk": "banarasi_silk",
+        "brocade": "zari_brocade",
+        "zari brocade": "zari_brocade",
+        "jacquard": "jacquard_silk",
+        "jacquard silk": "jacquard_silk",
+        "ikat": "ikat",
+        # Leather / Coated / Suede
+        "genuine leather": "genuine_leather",
+        "faux leather": "faux_leather_pu",
+        "faux/pu leather": "faux_leather_pu",
+        "pu leather": "faux_leather_pu",
+        "suede": "faux_suede",
+        "patent leather": "leather_patent",
+        # Heavy / Wool / Felted
+        "wool": "fine_merino_wool",
+        "fine wool": "fine_wool",
+        "tweed": "tweed_wool",
+        "cashmere": "pashmina_cashmere",
+        "pashmina": "pashmina_cashmere",
+        "fleece": "fleece_polyester",
+        "wool-blend": "wool_blend_suiting",
+        "wool blend": "wool_blend_suiting",
+        # Embroidered / Craft Work
+        "chikankari": "chikankari_georgette",
+        "zardozi": "zardozi_embroidered",
+        "kantha": "kantha_stitched_cotton",
+        "phulkari": "phulkari_embroidered",
+        "lace": "lace_chantilly",
+        "chantilly lace": "lace_chantilly",
+    }
+
+    if "items" in data and isinstance(data["items"], list):
+        for item in data["items"]:
+            if isinstance(item, dict):
+                raw_fab = str(item.get("fabric_type", "")).strip().lower()
+                if raw_fab and raw_fab != "uncertain":
+                    if raw_fab in FABRIC_ID_MAP:
+                        item["fabric_type"] = FABRIC_ID_MAP[raw_fab]
+                    else:
+                        for key, val in FABRIC_ID_MAP.items():
+                            if key in raw_fab or raw_fab in val.replace("_", " "):
+                                item["fabric_type"] = val
+                                break
+    return data
+
+
 def _parse_scan_json(text: str) -> Optional[dict]:
     """Extract and parse JSON from a model response string.
     Falls back to partial recovery and LLM repair pass for truncated responses."""
@@ -207,7 +381,7 @@ def _parse_scan_json(text: str) -> Optional[dict]:
 
     # Direct parse
     try:
-        return json.loads(text)
+        return _normalize_parsed_fabrics(json.loads(text))
     except json.JSONDecodeError:
         pass
 
@@ -216,7 +390,7 @@ def _parse_scan_json(text: str) -> Optional[dict]:
         for part in text.split("```"):
             clean = part.strip().lstrip("json").strip()
             try:
-                return json.loads(clean)
+                return _normalize_parsed_fabrics(json.loads(clean))
             except json.JSONDecodeError:
                 continue
 
@@ -225,7 +399,7 @@ def _parse_scan_json(text: str) -> Optional[dict]:
     end = text.rfind("}") + 1
     if start >= 0 and end > start:
         try:
-            return json.loads(text[start:end])
+            return _normalize_parsed_fabrics(json.loads(text[start:end]))
         except json.JSONDecodeError:
             pass
 
@@ -252,11 +426,11 @@ def _parse_scan_json(text: str) -> Optional[dict]:
                         f"[CV] Partial JSON recovery: salvaged {len(items)} items "
                         f"from truncated response"
                     )
-                    return {
+                    return _normalize_parsed_fabrics({
                         "items": items,
                         "frame_quality": "good",
                         "scene_lighting": "unknown",
-                    }
+                    })
         except Exception as e:
             log.warning(f"[CV] Partial recovery failed: {e}")
 
@@ -264,7 +438,7 @@ def _parse_scan_json(text: str) -> Optional[dict]:
     repaired = _repair_json_with_llm(text)
     if repaired and isinstance(repaired, dict):
         log.info("[CV] Successfully repaired malformed/truncated JSON via LLM pass")
-        return repaired
+        return _normalize_parsed_fabrics(repaired)
 
     return None
 
@@ -643,7 +817,7 @@ def generate_outfit_combinations(
             conf = float(item.get("confidence", 1.0))
         except Exception:
             conf = 1.0
-        if not fab or fab.lower() in ("unspecified", "none", ""):
+        if not fab or fab.lower() in ("unspecified", "none", "", "pending"):
             return ""
         if conf >= 0.75 and fab.lower() != "uncertain":
             return f" [fabric: '{fab}' -> HIGH CONFIDENCE: state directly without hedging]"
@@ -671,6 +845,75 @@ def generate_outfit_combinations(
             context_lines.append(f"User body type: {body}")
         if city:
             context_lines.append(f"User location: {city}")
+
+    # STEP: Wire Neo4j knowledge graph queries for grounding context
+    graph_lines = []
+    try:
+        from knowledge_graph import get_kg
+        kg = get_kg()
+        if kg and kg.is_connected:
+            # 1. Gather aesthetics from prompt and items
+            aesthetics_to_query = []
+            if aesthetic_prompt and isinstance(aesthetic_prompt, str):
+                aesthetics_to_query.append(aesthetic_prompt.strip())
+            for item in scan_items:
+                aes = item.get("aesthetic") or item.get("aesthetic_category")
+                if aes and isinstance(aes, str) and aes.strip() not in aesthetics_to_query:
+                    aesthetics_to_query.append(aes.strip())
+            
+            if not aesthetics_to_query:
+                known_aes = ["Quiet Luxury", "Global Indian Chic", "Minimalist", "Old Money", "Streetwear", "Heritage Luxury", "Cottagecore", "Editorial", "Indo Western Fusion", "Bohemian", "Avant-garde", "Modern Indian Ethnic Revival", "Understated Indian Elegance", "Indian Heritage Luxury"]
+                prompt_lower = str(aesthetic_prompt or "").lower()
+                for ka in known_aes:
+                    if ka.lower() in prompt_lower or any(ka.lower() in str(it.get("label", "")).lower() for it in scan_items):
+                        if ka not in aesthetics_to_query:
+                            aesthetics_to_query.append(ka)
+            
+            if aesthetics_to_query:
+                pairings = kg.query_pairings(aesthetics_to_query)
+                for p in pairings:
+                    base = p.get("base", "")
+                    pair = p.get("pair", "")
+                    if base and pair:
+                        graph_lines.append(f"Style Pairing Rule (from Neo4j Graph): '{base}' pairs beautifully with '{pair}' — favor combining or suggesting pieces from these complementary aesthetics.")
+                
+                fab_reqs = kg.query_fabric_requirements(aesthetics_to_query)
+                for f_req in fab_reqs:
+                    aes = f_req.get("aesthetic", "")
+                    fab = f_req.get("fabric", "")
+                    if aes and fab:
+                        graph_lines.append(f"Fabric Association (from Neo4j Graph): '{aes}' aesthetic strongly favors '{fab}' — prioritize or suggest this fabric when recommending missing pieces.")
+
+            # 2. Gather colors and query color pairings
+            colors_to_query = [str(item.get("color", "")).strip() for item in scan_items if item.get("color") and str(item.get("color", "")).strip() not in ("?", "unspecified", "none", "")]
+            if colors_to_query:
+                color_rules = kg.query_color_pairings(colors_to_query)
+                for cr in color_rules:
+                    base_c = cr.get("base_color", "")
+                    rel = cr.get("rel_type", "")
+                    target_c = cr.get("target_color", "")
+                    if rel == "COMPLEMENTS":
+                        graph_lines.append(f"Color Harmony (from Neo4j Graph): {base_c} complements {target_c} — great color match for layering or accessories.")
+                    elif rel == "CLASHES_WITH":
+                        graph_lines.append(f"Color Clash Warning (from Neo4j Graph): {base_c} clashes with {target_c} — avoid combining these colors unless styling avant-garde.")
+            
+            # 3. Query item/garment pairings for scanned items
+            for item in scan_items:
+                label_txt = str(item.get("label") or item.get("category") or "").strip()
+                if label_txt and label_txt != "?":
+                    item_pairs = kg.query_item_pairings(label_txt)
+                    for ip in item_pairs:
+                        paired_it = ip.get("paired_item", "")
+                        if paired_it:
+                            graph_lines.append(f"Item Pairing (from Neo4j Graph): '{label_txt}' complements '{paired_it}' — consider recommending '{paired_it}' as a missing piece.")
+    except Exception as e:
+        log.warning(f"[CV COMBOS] Neo4j graph lookup failed or no match, falling back to LLM-only: {e}")
+
+    if graph_lines:
+        context_lines.append("NEO4J KNOWLEDGE GRAPH GROUNDING (You MUST constrain and inform your combo suggestions and missing piece recommendations using these verified graph relationships):")
+        for gl in graph_lines:
+            context_lines.append(f"  * {gl}")
+
     user_context = ("\nUser Context:\n" + "\n".join(f"- {line}" for line in context_lines) + "\n") if context_lines else ""
 
     prompt = _COMBO_PROMPT.format(items_block=items_block, user_context=user_context)
@@ -1117,6 +1360,12 @@ class TemporalConsensus:
                 avg_conf = sum(h["confidence"] for h in track["history"]) / len(track["history"])
                 item["confidence"] = round(avg_conf, 2)
                 
+            existing_fabric = track.get("fabric_type", track.get("last_item", {}).get("fabric_type"))
+            if existing_fabric and existing_fabric not in ("pending", "uncertain", "unknown", ""):
+                item["fabric_type"] = existing_fabric
+            else:
+                item["fabric_type"] = item.get("fabric_type", "pending") or "pending"
+            track["fabric_type"] = item["fabric_type"]
             item["track_id"] = track_id
             item["state"] = track["state"]
             item["bbox"] = dict(track["smoothed_bbox"])
@@ -1134,12 +1383,14 @@ class TemporalConsensus:
                 raw_bbox = dict(item.get("bbox", {}))
                 smoothed_bbox = dict(raw_bbox)
                 
+                item["fabric_type"] = item.get("fabric_type", "pending") or "pending"
                 track = {
                     "track_id": track_id,
                     "state": "new",
                     "missed_cycles": 0,
                     "raw_bbox": raw_bbox,
                     "smoothed_bbox": smoothed_bbox,
+                    "fabric_type": item["fabric_type"],
                     "history": [{
                         "color": item.get("color"),
                         "confidence": item.get("confidence", 0.8),
@@ -1531,9 +1782,9 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
 
     api_key = os.environ.get("NVIDIA_API_KEY", "")
     base_url = "https://integrate.api.nvidia.com/v1"
-    # Client-level timeout must be HIGHER than the largest per-call timeout (25s)
+    # Client-level timeout must be HIGHER than the largest per-call timeout (35s)
     # otherwise the client-level cap silently kills calls before the per-call timeout fires.
-    async_client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=35.0, max_retries=0)
+    async_client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=45.0, max_retries=0)
 
     nemotron_messages = [
         {
@@ -1565,47 +1816,31 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
 
     # ── [TIMING] Preprocess already done in scan_frame — log it here only in async path
     async def run_dual_models():
-        # Primary: Nemotron 25s | Secondary: Llama-90B 25s | Fallback: Llama-11B 20s
-        t1 = asyncio.create_task(call_with_timeout(_call_model_for_scan(async_client, _MODEL_NEMOTRON, nemotron_messages, False, timeout=25.0), 25.0))
-        t2 = asyncio.create_task(call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_90B, llama_messages, True, timeout=25.0), 25.0))
-
-        done, pending = await asyncio.wait([t1, t2], return_when=asyncio.FIRST_COMPLETED)
-
-        res1, res2 = None, None
-        success = False
-        for task in done:
-            val = task.result()
-            if isinstance(val, dict) and val.get("items"):
-                if task == t1: res1 = val
-                if task == t2: res2 = val
-                success = True
-                break
-            elif isinstance(val, dict):
-                if task == t1: res1 = val
-                if task == t2: res2 = val
-
-        if success:
-            for p in pending:
-                p.cancel()
-        elif pending:
-            done2, _ = await asyncio.wait(pending)
-            for task in done2:
-                val = task.result()
-                if isinstance(val, dict):
-                    if task == t1: res1 = val
-                    if task == t2: res2 = val
-
-        if (not res1 or not res1.get("items")) and (not res2 or not res2.get("items")):
-            log.info("[CV] Both dual models returned None/empty, falling back to 11b vision")
-            t_fb = time.time()
-            res_fallback = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_11B, llama_messages, True, timeout=20.0), 20.0)
-            print(f"[TIMING] 11B fallback: {round(time.time()-t_fb,2)}s")
-            if res_fallback and res_fallback.get("items"):
-                res1 = res_fallback
-            else:
-                # Return whatever partial result we have — never return empty items[]
-                res1 = res_fallback or res1 or res2 or {"items": [], "frame_quality": "acceptable", "scene_lighting": "unknown"}
-        return res1, res2
+        # Fast Path: Llama-3.2-11B-Vision with _FAST_SCAN_PROMPT (~6-10s)
+        # Note: 90B and Nemotron-4-340B removed from synchronous live scan path.
+        # 90B is now used for Asynchronous Fabric Enrichment on cropped item regions.
+        fast_messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": _FAST_SCAN_PROMPT},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"},
+                    },
+                ],
+            },
+            {"role": "assistant", "content": "{"}
+        ]
+        res_fast = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_11B, fast_messages, True, timeout=12.0), 12.0)
+        if isinstance(res_fast, dict):
+            res_fast["_model_used"] = "Llama-3.2-11B-Fast"
+            for item in res_fast.get("items", []):
+                if isinstance(item, dict) and not item.get("fabric_type"):
+                    item["fabric_type"] = "pending"
+        else:
+            res_fast = {"items": [], "frame_quality": "acceptable", "scene_lighting": "unknown", "_model_used": "11B-Fast-Failed"}
+        return None, res_fast
 
     async def timed_dual():
         t_d = time.time()
@@ -1641,6 +1876,12 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
         scene_context_failed = False
 
     data = reconcile_scan_results(res1, res2)
+    m1 = (res1 or {}).get("_model_used") if isinstance(res1, dict) else None
+    m2 = (res2 or {}).get("_model_used") if isinstance(res2, dict) else None
+    if m1 and m2 and m1 != m2 and "items" in (res1 or {}) and "items" in (res2 or {}):
+        data["_model_used"] = f"Dual ({m1} + {m2})"
+    else:
+        data["_model_used"] = m1 or m2 or "Unknown"
     data["scene_context"] = scene_context
 
     # Normalize frame_quality — always set to a valid string.
@@ -2026,4 +2267,110 @@ def analyze_item(image_b64: str, item_label: str, user_profile: dict) -> dict:
         "fabric_intelligence": fabric_intelligence,
         "profile_compatibility": profile_compatibility,
         "tailor_available": True,
+    }
+
+
+async def enrich_item_fabric_async(
+    image_b64: str,
+    bbox: dict,
+    label: str,
+    category: str,
+    track_id: str,
+    user_id: str = "default"
+) -> dict:
+    """
+    Asynchronously enrich the fabric_type of a detected item from its cropped bounding box.
+    Runs hierarchical _SCAN_PROMPT on 90B (35s timeout) -> 11B fallback (15s timeout).
+    Updates ConsensusTracker so subsequent synchronous scans preserve the enriched fabric.
+    """
+    import base64, io
+    from PIL import Image
+    try:
+        img_bytes = base64.b64decode(image_b64)
+        pil_img = Image.open(io.BytesIO(img_bytes))
+        w_img, h_img = pil_img.size
+        
+        bx = float(bbox.get("x", 0.0)) * w_img
+        by = float(bbox.get("y", 0.0)) * h_img
+        bw = float(bbox.get("w", 1.0)) * w_img
+        bh = float(bbox.get("h", 1.0)) * h_img
+        
+        pad_w = int(bw * 0.08)
+        pad_h = int(bh * 0.08)
+        crop_box = (
+            max(0, int(bx - pad_w)),
+            max(0, int(by - pad_h)),
+            min(w_img, int(bx + bw + pad_w)),
+            min(h_img, int(by + bh + pad_h))
+        )
+        cropped = pil_img.crop(crop_box)
+        buf = io.BytesIO()
+        cropped.save(buf, format="JPEG", quality=85)
+        crop_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception as e:
+        log.warning(f"[CV ENRICH FABRIC] Crop failed for {track_id}, using full image: {e}")
+        crop_b64 = image_b64
+
+    enrich_prompt = f"""Return only the JSON object. No markdown, no explanation.
+CONTEXT: High-Precision Textile & Fabric Classification of a Cropped Garment.
+Item label: {label} ({category})
+
+Analyze this cropped closeup image of the garment and determine its exact fabric construction using the HIERARCHICAL TAXONOMY rules below.
+You MUST reason in two steps:
+Step 1: In "fabric_reason", provide a TERSE STRUCTURED PHRASE (5-10 words max) noting surface texture, weave, drape, and sheen (e.g. "diagonal twill, matte, stiff drape" or "fine smooth knit, soft drape, matte"). Do NOT write full sentences or prose.
+Step 2: In "fabric_type", select ONE specific fabric term from the grounded Tier 2 vocabulary below that matches your observed visual cues (or return "uncertain"). Do NOT use freeform text outside this list:
+
+1. Woven Plain / Crisp: poplin, linen, chambray, khadi cotton, handloom cotton
+2. Woven Twill / Denim: denim, twill, canvas, corduroy, gabardine
+3. Knit Ribbed / Cable: ribbed knit, cable knit, waffle knit
+4. Knit Jersey / Fine: jersey knit, interlock, athletic mesh
+5. Sheen / Fluid Drape: silk satin, crepe de chine, charmeuse, georgette
+6. Sheer / Crisp / Open Weave: organza, chanderi silk, chiffon, net, mulmul
+7. Structured / Jacquard / Brocade: raw silk dupion, banarasi brocade, jacquard, ikat
+8. Leather / Coated / Suede: genuine leather, faux/PU leather, suede, patent leather
+9. Heavy / Wool / Felted: fine wool, wool-blend, tweed, cashmere, fleece
+10. Embroidered / Craft Work: chikankari, zardozi, kantha, phulkari, chantilly lace
+
+Return ONLY a JSON object exactly matching this structure:
+{{
+  "fabric_reason": "<terse structured phrase, e.g. 'diagonal twill, matte, stiff drape'>",
+  "fabric_type": "<exact Tier 2 fabric term from the list above, or 'uncertain'>",
+  "confidence": 0.88
+}}
+"""
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": enrich_prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{crop_b64}"}},
+            ],
+        },
+        {"role": "assistant", "content": "{"}
+    ]
+    
+    async_client = _get_async_client()
+    res = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_90B, messages, True, timeout=35.0), 35.0)
+    if not res or not res.get("fabric_type"):
+        log.info(f"[CV ENRICH FABRIC] 90B timed out/failed on {track_id}, falling back to 11B")
+        res = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_11B, messages, True, timeout=15.0), 15.0)
+        
+    fabric_type = res.get("fabric_type", "uncertain") if isinstance(res, dict) else "uncertain"
+    fabric_reason = res.get("fabric_reason", "") if isinstance(res, dict) else ""
+    confidence = res.get("confidence", 0.8) if isinstance(res, dict) else 0.8
+    
+    tracker = get_consensus_tracker(user_id or "default")
+    if track_id in tracker._tracks:
+        track = tracker._tracks[track_id]
+        track["fabric_type"] = fabric_type
+        if "last_item" in track and isinstance(track["last_item"], dict):
+            track["last_item"]["fabric_type"] = fabric_type
+            track["last_item"]["fabric_reason"] = fabric_reason
+            
+    log.info(f"[CV ENRICH FABRIC] track_id={track_id} -> fabric_type='{fabric_type}' ({fabric_reason})")
+    return {
+        "track_id": track_id,
+        "fabric_type": fabric_type,
+        "fabric_reason": fabric_reason,
+        "confidence": confidence,
     }
