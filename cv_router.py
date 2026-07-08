@@ -43,6 +43,13 @@ class StyleCombosRequest(BaseModel):
     aesthetic_prompt: Optional[str] = None
     user_profile: Optional[dict] = None
 
+class CorrectionRequest(BaseModel):
+    track_id: str
+    original: dict
+    corrected: dict
+    confidence: Optional[float] = 0.0
+    user_id: Optional[str] = "default"
+
 
 # ══════════════════════════════════════════════════════════════════
 #  POST /api/cv/scan
@@ -236,6 +243,11 @@ async def cv_touch(request: Request):
         item_color = body.get("item_color", "")
         item_category = body.get("item_category", "")
         item_aesthetic = body.get("item_aesthetic", "")
+        item_fabric = body.get("item_fabric", body.get("fabric_type", ""))
+        try:
+            item_conf = float(body.get("item_confidence", body.get("confidence", 1.0)))
+        except Exception:
+            item_conf = 1.0
         all_items = body.get("all_items", [])
         user_id = body.get("user_id", "default")
         
@@ -251,17 +263,28 @@ async def cv_touch(request: Request):
         # Generate Shaaru's natural comment via Riley
         from riley_brain import riley_think
         
+        fabric_hint = f", fabric: '{item_fabric}' (conf: {item_conf})" if item_fabric else ""
+        if item_fabric:
+            if item_conf >= 0.75 and str(item_fabric).strip().lower() != "uncertain":
+                hedging_rule = f" Because fabric confidence is high ({item_conf}), state the fabric '{item_fabric}' directly and assertively without hedging."
+            elif item_conf >= 0.45 or str(item_fabric).strip().lower() == "uncertain":
+                hedging_rule = f" Because fabric confidence is low/penalized ({item_conf}), you MUST use conversational hedging when mentioning '{item_fabric}' (e.g. 'looks like it could be {item_fabric}', 'seems like {item_fabric}'). Never state it as flat fact!"
+            else:
+                hedging_rule = " Because fabric confidence is very low (< 0.45), skip mentioning the specific fabric type entirely; describe by silhouette/color instead."
+        else:
+            hedging_rule = ""
+
         prompt = (
             f"[SHAARU LIVE CAMERA — user just touched "
             f"or pointed at: {item_color} {item_label} "
-            f"({item_category}, {item_aesthetic} vibe). "
+            f"({item_category}, {item_aesthetic} vibe{fabric_hint}). "
             f"Other items visible in scene: {others_str}. "
             f"Give ONE natural warm reaction in Shaaru's "
             f"voice — like a knowledgeable bestie noticing "
             f"what they picked up. Comment on this specific "
             f"item and casually suggest one thing that would "
             f"pair well with it from the visible items or "
-            f"something to look for. Max 20 words. "
+            f"something to look for. Max 20 words.{hedging_rule} "
             f"No hashtags, no bullet points, just talk.]"
         )
         
@@ -301,4 +324,41 @@ async def cv_touch(request: Request):
     except Exception as e:
         print(f"[CV TOUCH] Error: {e}")
         return {"comment": None, "error": str(e)}
+
+
+@router.post("/correct")
+async def cv_correct(req: CorrectionRequest):
+    """
+    Log user tap-to-correct feedback for future fine-tuning/eval.
+    Writes to cv_corrections.jsonl in JSONL format.
+    """
+    ts = datetime.now(timezone.utc).isoformat()
+    try:
+        import json
+        log_entry = {
+            "timestamp": ts,
+            "track_id": req.track_id,
+            "user_id": req.user_id,
+            "original": req.original,
+            "corrected": req.corrected,
+            "confidence": req.confidence,
+        }
+        with open("cv_corrections.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry) + "\n")
+        log.info(f"[CV CORRECT] Logged correction for track_id={req.track_id}: {req.original} -> {req.corrected}")
+        try:
+            try:
+                from database import get_db
+                db = get_db()
+            except ImportError:
+                from shaaru_brain import _get_db
+                db = _get_db()
+            if db is not None:
+                db["cv_corrections"].insert_one(log_entry)
+        except Exception:
+            pass
+        return {"status": "success", "logged": True}
+    except Exception as e:
+        log.error(f"[CV CORRECT] Failed to write correction log: {e}")
+        return {"status": "error", "error": str(e)}
 

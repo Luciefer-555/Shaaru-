@@ -1,0 +1,266 @@
+{
+  "timestamp": "2026-07-06T14:51:53Z",
+  "temperature_tested": 0.0,
+  "summary": {
+    "total_tested": 13,
+    "consistent_count": 7,
+    "consistency_pct": 53.8,
+    "accuracy_r1_pct": 38.5,
+    "accuracy_r2_pct": 23.1,
+    "flip_flops": [
+      [
+        "01_denim_jeans.jpg",
+        "genuine leather",
+        "denim"
+      ],
+      [
+        "03_denim_coord.jpg",
+        "denim",
+        "canvas"
+      ],
+      [
+        "06_cable_knit_cardigan.jpg",
+        "jersey knit",
+        "uncertain"
+      ],
+      [
+        "11_torani_silk_organza_saree.png",
+        "silk",
+        "uncertain"
+      ],
+      [
+        "12_picante_ruched_slip_dress.jpg",
+        "faux/pu leather",
+        "jersey knit"
+      ],
+      [
+        "13_nicobar_linen_kurta.jpg",
+        "uncertain",
+        "organza"
+      ]
+    ]
+  },
+  "detailed_results": [
+    {
+      "filename": "01_denim_jeans.jpg",
+      "expected_fabric": "denim",
+      "run1": {
+        "fabric_type": "genuine leather",
+        "status": "[MISMATCH]",
+        "confidence": 0.95,
+        "latency_sec": 16.86
+      },
+      "run2": {
+        "fabric_type": "denim",
+        "status": "[OK]",
+        "confidence": 0.92,
+        "latency_sec": 15.44
+      },
+      "is_consistent": false
+    },
+    {
+      "filename": "02_denim_jacket.jpg",
+      "expected_fabric": "denim",
+      "run1": {
+        "fabric_type": "wool",
+        "status": "[MISMATCH]",
+        "confidence": 0.85,
+        "latency_sec": 15.39
+      },
+      "run2": {
+        "fabric_type": "wool",
+        "status": "[MISMATCH]",
+        "confidence": 0.42,
+        "latency_sec": 8.76
+      },
+      "is_consistent": true
+    },
+    {
+      "filename": "03_denim_coord.jpg",
+      "expected_fabric": "denim",
+      "run1": {
+        "fabric_type": "denim",
+        "status": "[OK]",
+        "confidence": 0.92,
+        "latency_sec": 10.54
+      },
+      "run2": {
+        "fabric_type": "canvas",
+        "status": "[MISMATCH]",
+        "confidence": 0.94,
+        "latency_sec": 8.44
+      },
+      "is_consistent": false
+    },
+    {
+      "filename": "04_ribbed_knit_sweater.jpg",
+      "expected_fabric": "ribbed knit",
+      "run1": {
+        "fabric_type": "jersey knit",
+        "status": "[OK]",
+        "confidence": 0.92,
+        "latency_sec": 5.34
+      },
+      "run2": {
+        "fabric_type": "jersey knit",
+        "status": "[OK]",
+        "confidence": 0.9,
+        "latency_sec": 3.77
+      },
+      "is_consistent": true
+    },
+    {
+      "filename": "05_jersey_knit_tshirt.jpg",
+      "expected_fabric": "jersey knit",
+      "run1": {
+        "fabric_type": "poplin",
+        "status": "[MISMATCH]",
+        "confidence": 0.92,
+        "latency_sec": 4.93
+      },
+      "run2": {
+        "fabric_type": "poplin",
+        "status": "[MISMATCH]",
+        "confidence": 0.92,
+        "latency_sec": 4.4
+      },
+      "is_consistent": true
+    },
+    {
+      "filename": "06_cable_knit_cardigan.jpg",
+      "expected_fabric": "cable knit",
+      "run1": {
+        "fabric_type": "jersey knit",
+        "status": "[OK]",
+        "confidence": 0.92,
+        "latency_sec": 8.94
+      },
+      "run2": {
+        "fabric_type": "uncertain",
+        "status": "[UNCERTAIN]",
+        "confidence": 0.95,
+        "latency_sec": 8.6
+      },
+      "is_consistent": false
+    },
+    {
+      "filename": "07_genuine_leather_jacket.jpg",
+      "expected_fabric": "genuine leather",
+      "run1": {
+        "fabric_type": "faux/pu leather",
+        "status": "[OK]",
+        "confidence": 0.92,
+        "latency_sec": 9.46
+      },
+      "run2": {
+        "fabric_type": "faux/pu leather",
+        "status": "[OK]",
+        "confidence": 0.92,
+        "latency_sec": 4.48
+      },
+      "is_consistent": true
+    },
+    {
+      "filename": "08_faux_vegan_leather_coat.jpg",
+      "expected_fabric": "faux/pu leather",
+      "run1": {
+        "fabric_type": "wool",
+        "status": "[MISMATCH]",
+        "confidence": 0.87,
+        "latency_sec": 39.85
+      },
+      "run2": {
+        "fabric_type": "wool",
+        "status": "[MISMATCH]",
+        "confidence": 0.92,
+        "latency_sec": 12.21
+      },
+      "is_consistent": true
+    },
+    {
+      "filename": "09_woven_linen_shirt.jpg",
+      "expected_fabric": "linen",
+      "run1": {
+        "fabric_type": "poplin",
+        "status": "[MISMATCH]",
+        "confidence": 0.92,
+        "latency_sec": 8.3
+      },
+      "run2": {
+        "fabric_type": "poplin",
+        "status": "[MISMATCH]",
+        "confidence": 0.92,
+        "latency_sec": 12.26
+      },
+      "is_consistent": true
+    },
+    {
+      "filename": "10_cotton_poplin_shirt.jpg",
+      "expected_fabric": "poplin",
+      "run1": {
+        "fabric_type": "chambray",
+        "status": "[MISMATCH]",
+        "confidence": 0.92,
+        "latency_sec": 5.29
+      },
+      "run2": {
+        "fabric_type": "chambray",
+        "status": "[MISMATCH]",
+        "confidence": 0.92,
+        "latency_sec": 5.1
+      },
+      "is_consistent": true
+    },
+    {
+      "filename": "11_torani_silk_organza_saree.png",
+      "expected_fabric": "organza|silk",
+      "run1": {
+        "fabric_type": "silk",
+        "status": "[OK]",
+        "confidence": 0.92,
+        "latency_sec": 16.16
+      },
+      "run2": {
+        "fabric_type": "uncertain",
+        "status": "[UNCERTAIN]",
+        "confidence": 0.92,
+        "latency_sec": 24.92
+      },
+      "is_consistent": false
+    },
+    {
+      "filename": "12_picante_ruched_slip_dress.jpg",
+      "expected_fabric": "satin/crepe|silk",
+      "run1": {
+        "fabric_type": "faux/pu leather",
+        "status": "[MISMATCH]",
+        "confidence": 0.92,
+        "latency_sec": 6.61
+      },
+      "run2": {
+        "fabric_type": "jersey knit",
+        "status": "[MISMATCH]",
+        "confidence": 0.94,
+        "latency_sec": 8.11
+      },
+      "is_consistent": false
+    },
+    {
+      "filename": "13_nicobar_linen_kurta.jpg",
+      "expected_fabric": "linen",
+      "run1": {
+        "fabric_type": "uncertain",
+        "status": "[UNCERTAIN]",
+        "confidence": 0.85,
+        "latency_sec": 6.0
+      },
+      "run2": {
+        "fabric_type": "organza",
+        "status": "[MISMATCH]",
+        "confidence": 0.92,
+        "latency_sec": 5.63
+      },
+      "is_consistent": false
+    }
+  ]
+}

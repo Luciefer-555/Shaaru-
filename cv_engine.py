@@ -62,6 +62,8 @@ For each item, return a JSON object in this exact structure:
       "id": "item_1",
       "label": "<specific fashion name>",
       "description": "<one precise sentence about fabric and construction>",
+      "fabric_type": "<exact term from fixed taxonomy below, or 'uncertain'>",
+      "fabric_reason": "<brief explanation of visual cues, or reason for uncertainty if uncertain>",
       "category": "top|bottom|outerwear|footwear|accessory|dress|set",
       "color": "<precise color name, not just 'blue' — say 'indigo' or 'slate grey' or 'off-white'>",
       "aesthetic": "maximalist|minimalist|streetwear|editorial|fusion|formal|traditional|resort|workwear",
@@ -100,6 +102,42 @@ CRITICAL RULES for the description field:
    strong Gen Z street energy."
   "Fitted mandarin-collar poplin in crisp off-white with hidden 
    placket — formal-adjacent but minimal."
+
+CRITICAL RULES for the fabric_type field (FIXED TAXONOMY):
+You MUST classify fabric into ONE exact term from this fixed vocabulary (or return "uncertain"). Do NOT use freeform text or any term outside this list:
+
+Woven:
+- poplin: Crisp, tightly woven, smooth surface with subtle sheen (classic dress shirts).
+- denim: Sturdy cotton twill with diagonal ribbing and visible weave structure (jeans, jackets).
+- linen: Lightweight, breathable weave with visible natural slubs and slight wrinkling/texture.
+- canvas: Heavy, rugged plain-weave fabric with coarse matte texture (utility wear, bags).
+- corduroy: Distinct vertical raised wales/cords with velvety texture.
+- twill: Distinct diagonal rib weave pattern, softer and more drapeable than canvas.
+- chambray: Plain weave with white weft and colored warp, resembling lightweight denim but smoother.
+
+Knit:
+- ribbed knit: Distinct vertical raised rows/ribs, stretchy and textured (turtlenecks, cuffs, sweaters).
+- jersey knit: Smooth, fine gauge knit with high stretch and soft drape (t-shirts, casual wear).
+- cable knit: Chunky, textured knit with braided or twisting rope-like patterns.
+- waffle knit: Three-dimensional grid/honeycomb texture (thermal wear, sweaters).
+
+Leather:
+- genuine leather: Rich natural grain, smooth sheen, structured drape with natural creasing.
+- faux/PU leather: Uniform artificial grain, high gloss or synthetic sheen, rigid plastic-like drape.
+- suede: Soft, napped/velvety matte surface texture without sheen.
+
+Other:
+- wool: Dense, warm, matte fiber with soft fuzzy or felted texture (suiting, coats).
+- wool-blend: Textured fabric showing wool warmth combined with synthetic structure or smoothness.
+- silk: Luxurious high luster, fluid flowing drape, smooth delicate surface.
+- satin/crepe: Smooth lustrous face with dull back (satin), or textured pebbled/crinkled surface with fluid drape (crepe).
+- velvet: Dense, plush pile with rich sheen and deep light-capturing shadows.
+- organza: Crisp, sheer/semi-sheer lightweight fabric with stiff, sculptural volume and subtle shimmer.
+
+EXPLICIT UNCERTAINTY OPTION (IMPORTANT - DO NOT FORCE GUESSES):
+- If you cannot 100% definitively distinguish the exact fabric weave or material (for example, distinguishing between linen vs poplin, denim vs canvas, genuine vs faux leather, or if the weave is subtle/unclear), you MUST return "fabric_type": "uncertain" and explain what you see in "fabric_reason".
+- Guessing a fabric from the list when you are not 100% certain is a MAJOR FAILURE and WORSE than saying "uncertain".
+- When in doubt between two or more fabrics, ALWAYS return "fabric_type": "uncertain"!
 
 CRITICAL RULES for the confidence field:
 - Estimate per-item based on visibility, not a fixed number
@@ -559,7 +597,7 @@ Rules:
 - hunt_line must be short, direct, conversational like a stylist speaking in your ear telling you what to hunt for right now
 - alternatives must provide 2 quick plain-spoken backup options
 - scan_prompt must ALWAYS be present when role is bottom, top, footwear, outerwear, or dress — ask if they have it on so they can show the camera
-- directions must mention actual item labels by name
+- directions must reference the scanned items clearly, but MUST obey the CONFIDENCE-AWARE FABRIC HEDGING rule below: if an item's confidence is < 0.75 or fabric is uncertain, do NOT copy fabric words from the label verbatim as a flat fact! Instead hedge naturally (e.g., "your cream top — looks like a ribbed knit — over...") or refer to it by category/color.
 - directions must ONLY reference items whose id appears in items_used for that combo.
   Never mention, imply, or describe any item not in items_used — not even vaguely
   ("a blouse", "the skirt you'll find", "a simple top"). If a piece is needed but
@@ -570,7 +608,11 @@ Rules:
 - before writing directions, mentally check: is every item I mention in items_used?
   If not, move it to missing[] or remove it entirely
 - if only tops/outerwear scanned with no bottoms, every combo needs a missing bottom
-- vibe must be specific to Indian Gen Z sensibility — reference real aesthetics"""
+- vibe must be specific to Indian Gen Z sensibility — reference real aesthetics
+- CONFIDENCE-AWARE FABRIC HEDGING: When describing scanned items or suggesting pieces in directions, hunt_line, find, or scan_prompt, check the confidence score and fabric_type of each item:
+  * High confidence (confidence >= 0.75 and fabric_type not 'uncertain'): State the fabric type directly and assertively (e.g., "this crisp poplin shirt...", "layer over the denim jacket").
+  * Penalized/uncertain (0.45 <= confidence < 0.75 or fabric_type is 'uncertain'): Use natural, conversational hedging when mentioning the fabric or weave in directions/hunt_line/find (e.g., "your cream top — looks like it could be a ribbed knit — over the trousers", "seems like a ribbed knit, though I'm not 100% sure on the exact weave"). Even if the fabric name appears inside the item's label, you MUST hedge it or soften it rather than stating it as flat fact!
+  * Very low confidence (confidence < 0.45): Skip stating the specific fabric type entirely; describe the piece by silhouette, category, and color instead (e.g., "the black structured jacket", "the relaxed button-down")."""
 
 
 def generate_outfit_combinations(
@@ -595,9 +637,24 @@ def generate_outfit_combinations(
     has_worn_items = any(item.get("worn_by_person") is True for item in scan_items)
     combo_context = "building_on_what_you_are_wearing" if has_worn_items else "full_rack_suggestions"
 
+    def _format_item_fabric_note(item):
+        fab = str(item.get("fabric_type", "")).strip()
+        try:
+            conf = float(item.get("confidence", 1.0))
+        except Exception:
+            conf = 1.0
+        if not fab or fab.lower() in ("unspecified", "none", ""):
+            return ""
+        if conf >= 0.75 and fab.lower() != "uncertain":
+            return f" [fabric: '{fab}' -> HIGH CONFIDENCE: state directly without hedging]"
+        elif conf >= 0.45 or fab.lower() == "uncertain":
+            return f" [fabric: '{fab}' -> LOW/PENALIZED CONFIDENCE ({conf}): MUST HEDGE in directions/hunt_line (e.g. 'looks like {fab}', 'seems like {fab}')]"
+        else:
+            return f" [fabric: '{fab}' -> VERY LOW CONFIDENCE ({conf}): SKIP FABRIC MENTION ENTIRELY]"
+
     items_block = "\n".join(
         f"  - id: {item.get('id', '?')} | {item.get('label', '?')} "
-        f"({item.get('category', '?')}, {item.get('color', '?')})"
+        f"(category: {item.get('category', '?')}, color: {item.get('color', '?')}){_format_item_fabric_note(item)}"
         f"{' [WORN BY USER RIGHT NOW]' if item.get('worn_by_person') else ' [ON STORE RACK]' if item.get('worn_by_person') is False else ''}"
         for item in scan_items
     )
@@ -698,7 +755,7 @@ async def _call_model_for_scan(client, model_name: str, messages: list, is_json_
         kwargs = {
             "model": model_name,
             "messages": messages,
-            "temperature": 0.1,
+            "temperature": 0.0,
             "max_tokens": 2048,
             "timeout": timeout,
         }
@@ -716,6 +773,36 @@ async def _call_model_for_scan(client, model_name: str, messages: list, is_json_
     except Exception as e:
         log.warning(f"[CV] Async call to {model_name} failed: {e}")
         return None
+
+def _is_substantial_disagreement(item1: dict, item2: dict) -> bool:
+    cat1 = str(item1.get("category", "")).lower().strip()
+    cat2 = str(item2.get("category", "")).lower().strip()
+    
+    # If both categories are present and different -> substantial disagreement
+    if cat1 and cat2 and cat1 != cat2:
+        return True
+        
+    import re
+    def get_words(text: str) -> set:
+        words = set(re.findall(r'\b[a-z]{3,}\b', text.lower()))
+        stopwords = {"with", "and", "the", "for", "from", "are", "have", "this", "that", "some", "very", "item", "wear"}
+        return words - stopwords
+
+    w1 = get_words(str(item1.get("label", "")))
+    w2 = get_words(str(item2.get("label", "")))
+    
+    if not w1 or not w2:
+        return False
+        
+    intersection = w1.intersection(w2)
+    union = w1.union(w2)
+    jaccard = len(intersection) / len(union) if union else 1.0
+    
+    # If within same category (or missing category), disagree if zero keyword overlap and low Jaccard
+    if len(intersection) == 0 and jaccard < 0.2:
+        return True
+        
+    return False
 
 def reconcile_scan_results(data1: Optional[dict], data2: Optional[dict]) -> dict:
     if not data1 and not data2:
@@ -758,38 +845,103 @@ def reconcile_scan_results(data1: Optional[dict], data2: Optional[dict]) -> dict
         for idx, item2 in enumerate(items2):
             if idx in used_idx2 or not isinstance(item2, dict):
                 continue
+            iou_val = _compute_iou(item1.get("bbox", {}), item2.get("bbox", {}))
             label2 = str(item2.get("label", "")).lower()
-            if item1.get("category") == item2.get("category") or any(word in label2 for word in label1.split() if len(word) > 3):
+            old_match = (item1.get("category") == item2.get("category") or any(word in label2 for word in label1.split() if len(word) > 3))
+            if iou_val >= 0.5 or old_match:
                 best_match = item2
                 best_idx = idx
                 break
         if best_match:
             used_idx2.add(best_idx)
-            reconciled_item = dict(item1)
-            l1, l2 = str(item1.get("label", "")), str(best_match.get("label", ""))
-            if l1.lower() != l2.lower() and l1 and l2:
-                conflicts_flagged += 1
-                conflict_notes.append(f"Conflict on label: '{l1}' vs '{l2}'")
-                reconciled_item["label"] = l1 if len(l1) >= len(l2) else l2
-
-            c1, c2 = str(item1.get("color", "")), str(best_match.get("color", ""))
-            if c1.lower() != c2.lower() and c1 and c2:
-                conflicts_flagged += 1
-                conflict_notes.append(f"Conflict on color: '{c1}' vs '{c2}'")
-                reconciled_item["color"] = c1 if len(c1) >= len(c2) else c2
-
+            is_disagreement = _is_substantial_disagreement(item1, best_match)
+            is_uncertain_fabric = (
+                str(item1.get("fabric_type", "")).strip().lower() == "uncertain" or 
+                str(best_match.get("fabric_type", "")).strip().lower() == "uncertain"
+            )
+            
             try:
                 conf1 = float(item1.get("confidence", 0.8))
-                conf2 = float(best_match.get("confidence", 0.8))
-                reconciled_item["confidence"] = round((conf1 + conf2) / 2.0, 2)
             except Exception:
-                pass
+                conf1 = 0.8
+            try:
+                conf2 = float(best_match.get("confidence", 0.8))
+            except Exception:
+                conf2 = 0.8
+
+            if is_disagreement or is_uncertain_fabric:
+                conflicts_flagged += 1
+                if is_disagreement:
+                    conflict_notes.append(f"Substantial disagreement: '{item1.get('label')}' vs '{best_match.get('label')}'")
+                if is_uncertain_fabric:
+                    conflict_notes.append("Fabric uncertainty penalized")
+                
+                # Pick higher confidence model as base item
+                reconciled_item = dict(best_match) if conf2 > conf1 else dict(item1)
+                
+                # Reduce final confidence score by penalty factor (0.6)
+                adj_conf = round(max(conf1, conf2) * 0.6, 2)
+                reconciled_item["confidence"] = adj_conf
+                
+                # Log disagreement/uncertainty event
+                log.warning(
+                    f"[CV] Cross-model disagreement/uncertainty on bbox {item1.get('bbox')}: "
+                    f"Model1='{item1.get('label')}' (fabric: {item1.get('fabric_type')}, conf: {conf1}) vs "
+                    f"Model2='{best_match.get('label')}' (fabric: {best_match.get('fabric_type')}, conf: {conf2}). "
+                    f"Adjusted conf -> {adj_conf}"
+                )
+                try:
+                    import json, datetime
+                    log_entry = {
+                        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                        "bbox": item1.get("bbox", {}),
+                        "reason": "disagreement" if is_disagreement else "uncertain_fabric",
+                        "model1": {"label": item1.get("label"), "category": item1.get("category"), "fabric_type": item1.get("fabric_type"), "confidence": conf1},
+                        "model2": {"label": best_match.get("label"), "category": best_match.get("category"), "fabric_type": best_match.get("fabric_type"), "confidence": conf2},
+                        "adjusted_confidence": adj_conf
+                    }
+                    with open("cv_disagreements.jsonl", "a", encoding="utf-8") as f:
+                        f.write(json.dumps(log_entry) + "\n")
+                except Exception as e:
+                    log.error(f"[CV] Failed to write disagreement log: {e}")
+            else:
+                reconciled_item = dict(item1)
+                l1, l2 = str(item1.get("label", "")), str(best_match.get("label", ""))
+                if l1.lower() != l2.lower() and l1 and l2:
+                    conflicts_flagged += 1
+                    conflict_notes.append(f"Conflict on label: '{l1}' vs '{l2}'")
+                    reconciled_item["label"] = l1 if len(l1) >= len(l2) else l2
+
+                c1, c2 = str(item1.get("color", "")), str(best_match.get("color", ""))
+                if c1.lower() != c2.lower() and c1 and c2:
+                    conflicts_flagged += 1
+                    conflict_notes.append(f"Conflict on color: '{c1}' vs '{c2}'")
+                    reconciled_item["color"] = c1 if len(c1) >= len(c2) else c2
+
+                reconciled_item["confidence"] = round((conf1 + conf2) / 2.0, 2)
+
             merged_items.append(reconciled_item)
         else:
+            if str(item1.get("fabric_type", "")).strip().lower() == "uncertain":
+                try:
+                    conf1 = float(item1.get("confidence", 0.8))
+                except Exception:
+                    conf1 = 0.8
+                item1["confidence"] = round(conf1 * 0.6, 2)
+                conflicts_flagged += 1
+                conflict_notes.append("Fabric uncertainty penalized")
             merged_items.append(item1)
 
     for idx, item2 in enumerate(items2):
         if idx not in used_idx2 and isinstance(item2, dict):
+            if str(item2.get("fabric_type", "")).strip().lower() == "uncertain":
+                try:
+                    conf2 = float(item2.get("confidence", 0.8))
+                except Exception:
+                    conf2 = 0.8
+                item2["confidence"] = round(conf2 * 0.6, 2)
+                conflicts_flagged += 1
+                conflict_notes.append("Fabric uncertainty penalized")
             merged_items.append(item2)
 
     return {
@@ -851,54 +1003,204 @@ class TemporalConsensus:
     def __init__(self, window_size=5, min_confidence=0.7):
         self.window_size = window_size
         self.min_confidence = min_confidence
-        self._history = {}  # label -> list of (color, confidence, aesthetic)
-        self._stable = {}   # label -> stabilized attributes
+        self._tracks = {}  # track_id -> dict(track_id, state, missed_cycles, raw_bbox, smoothed_bbox, history, last_item)
+        self._history = {} # kept for backward compatibility if accessed directly
+        self._stable = {}  # kept for backward compatibility with should_rescan
     
+    def _is_label_similar(self, l1: str, c1: str, l2: str, c2: str) -> bool:
+        if not l1 or not l2:
+            return False
+        if l1 == l2:
+            return True
+        if c1 and c2 and c1 == c2:
+            return True
+        import re
+        def get_words(text: str) -> set:
+            words = set(re.findall(r'\b[a-z]{3,}\b', text.lower()))
+            stopwords = {"with", "and", "the", "for", "from", "are", "have", "this", "that", "some", "very", "item", "wear"}
+            return words - stopwords
+        w1 = get_words(l1)
+        w2 = get_words(l2)
+        if w1 and w2:
+            inter = w1.intersection(w2)
+            union = w1.union(w2)
+            if len(inter) / len(union) >= 0.4:
+                return True
+            if any(w in l2 for w in w1 if len(w) >= 4) or any(w in l1 for w in w2 if len(w) >= 4):
+                return True
+        return False
+
+    def _compute_match_score(self, track: dict, item: dict) -> float:
+        track_bbox = track.get("smoothed_bbox", track.get("raw_bbox", {}))
+        item_bbox = item.get("bbox", {})
+        iou = _compute_iou(item_bbox, track_bbox)
+        
+        l1 = track.get("last_item", {}).get("label", "").lower().strip()
+        l2 = item.get("label", "").lower().strip()
+        c1 = track.get("last_item", {}).get("category", "").lower().strip()
+        c2 = item.get("category", "").lower().strip()
+        
+        cx1 = item_bbox.get("x", 0.0) + item_bbox.get("w", 0.0) / 2.0
+        cy1 = item_bbox.get("y", 0.0) + item_bbox.get("h", 0.0) / 2.0
+        cx2 = track_bbox.get("x", 0.0) + track_bbox.get("w", 0.0) / 2.0
+        cy2 = track_bbox.get("y", 0.0) + track_bbox.get("h", 0.0) / 2.0
+        dist = ((cx1 - cx2) ** 2 + (cy1 - cy2) ** 2) ** 0.5
+        
+        if iou >= 0.35:
+            return 1.0 + iou
+        elif self._is_label_similar(l1, c1, l2, c2) and dist <= 0.25:
+            return 0.5 + max(0.0, 0.25 - dist)
+        return 0.0
+
     def update(self, items: list) -> list:
-        # Add new frame's items to history
-        for item in items:
-            label = item.get('label', '').lower().strip()
-            if not label:
-                continue
-            if label not in self._history:
-                self._history[label] = []
-            self._history[label].append({
-                'color': item.get('color'),
-                'confidence': item.get('confidence', 0.8),
-                'aesthetic': item.get('aesthetic'),
-                'category': item.get('category')
+        import uuid
+        from collections import Counter
+        
+        # 1. Match new items against existing active tracks
+        candidates = []
+        for track_id, track in self._tracks.items():
+            for idx, item in enumerate(items):
+                score = self._compute_match_score(track, item)
+                if score > 0.0:
+                    candidates.append((score, track_id, idx))
+                    
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        
+        matched_tracks = set()
+        matched_items = set()
+        pairs = []
+        for score, track_id, idx in candidates:
+            if track_id not in matched_tracks and idx not in matched_items:
+                matched_tracks.add(track_id)
+                matched_items.add(idx)
+                pairs.append((track_id, idx))
+                
+        stabilized_items = [None] * len(items)
+        
+        # 2. Update matched tracks
+        for track_id, idx in pairs:
+            track = self._tracks[track_id]
+            item = dict(items[idx])
+            
+            # State transition: if matched in subsequent scan, state becomes confirmed
+            if len(track["history"]) >= 1:
+                track["state"] = "confirmed"
+            track["missed_cycles"] = 0
+            
+            # EMA BBox smoothing
+            new_bbox = item.get("bbox", {})
+            prev_smoothed = track.get("smoothed_bbox", {})
+            alpha = 0.4
+            smoothed_bbox = {}
+            for k in ("x", "y", "w", "h"):
+                val = alpha * float(new_bbox.get(k, 0.0)) + (1.0 - alpha) * float(prev_smoothed.get(k, 0.0))
+                smoothed_bbox[k] = round(val, 4)
+            track["smoothed_bbox"] = smoothed_bbox
+            track["raw_bbox"] = dict(new_bbox)
+            
+            # History update
+            track["history"].append({
+                "color": item.get("color"),
+                "confidence": item.get("confidence", 0.8),
+                "aesthetic": item.get("aesthetic"),
+                "category": item.get("category"),
+                "label": item.get("label"),
             })
-            # Keep only last N frames
-            self._history[label] = self._history[label][-self.window_size:]
-        
-        # Build consensus for each tracked item
-        stabilized_items = []
-        for item in items:
-            label = item.get('label', '').lower().strip()
-            history = self._history.get(label, [])
-            if len(history) >= 2:
-                # Most common color across frames wins
-                colors = [h['color'] for h in history if h['color']]
+            track["history"] = track["history"][-self.window_size:]
+            
+            # Apply color/confidence consensus across history
+            if len(track["history"]) >= 2:
+                colors = [h["color"] for h in track["history"] if h["color"]]
                 if colors:
-                    from collections import Counter
                     consensus_color = Counter(colors).most_common(1)[0][0]
-                    item = {**item, 'color': consensus_color}
-                # Average confidence
-                avg_conf = sum(h['confidence'] for h in history) / len(history)
-                item = {**item, 'confidence': round(avg_conf, 2)}
-            stabilized_items.append(item)
+                    item["color"] = consensus_color
+                avg_conf = sum(h["confidence"] for h in track["history"]) / len(track["history"])
+                item["confidence"] = round(avg_conf, 2)
+                
+            item["track_id"] = track_id
+            item["state"] = track["state"]
+            item["bbox"] = dict(track["smoothed_bbox"])
+            track["last_item"] = dict(item)
+            stabilized_items[idx] = item
+            
+        # 3. Create new tracks for unmatched detections
+        for idx in range(len(items)):
+            if idx not in matched_items:
+                item = dict(items[idx])
+                track_id = f"track_{uuid.uuid4().hex[:4]}"
+                while track_id in self._tracks:
+                    track_id = f"track_{uuid.uuid4().hex[:4]}"
+                
+                raw_bbox = dict(item.get("bbox", {}))
+                smoothed_bbox = dict(raw_bbox)
+                
+                track = {
+                    "track_id": track_id,
+                    "state": "new",
+                    "missed_cycles": 0,
+                    "raw_bbox": raw_bbox,
+                    "smoothed_bbox": smoothed_bbox,
+                    "history": [{
+                        "color": item.get("color"),
+                        "confidence": item.get("confidence", 0.8),
+                        "aesthetic": item.get("aesthetic"),
+                        "category": item.get("category"),
+                        "label": item.get("label"),
+                    }],
+                    "last_item": dict(item)
+                }
+                self._tracks[track_id] = track
+                matched_tracks.add(track_id)
+                item["track_id"] = track_id
+                item["state"] = "new"
+                item["bbox"] = dict(smoothed_bbox)
+                track["last_item"] = dict(item)
+                stabilized_items[idx] = item
+                
+        # 4. Handle unmatched existing tracks (Coasting vs Pruning)
+        coasting_items = []
+        tracks_to_delete = []
+        for track_id, track in self._tracks.items():
+            if track_id not in matched_tracks:
+                track["missed_cycles"] += 1
+                if track["missed_cycles"] == 1:
+                    # Enter coasting state for exactly 1 scan cycle
+                    track["state"] = "coasting"
+                    coasting_item = dict(track["last_item"])
+                    coasting_item["state"] = "coasting"
+                    coasting_item["track_id"] = track_id
+                    coasting_item["bbox"] = dict(track["smoothed_bbox"])
+                    coasting_items.append(coasting_item)
+                else:
+                    # Prune after 2+ missed cycles
+                    tracks_to_delete.append(track_id)
+                    
+        for tid in tracks_to_delete:
+            del self._tracks[tid]
+            
+        # Combine active items and coasting items
+        final_items = [it for it in stabilized_items if it is not None] + coasting_items
         
-        return stabilized_items
-    
+        # Renumber item IDs sequentially and sync legacy _history/_stable
+        self._history = {}
+        self._stable = {}
+        for i, it in enumerate(final_items):
+            it["id"] = f"item_{i + 1}"
+            lbl = it.get("label", "").lower().strip()
+            if lbl:
+                self._history[lbl] = self._tracks.get(it.get("track_id", ""), {}).get("history", [])
+                self._stable[lbl] = it
+                
+        return final_items
+
     def should_rescan(self, new_items: list) -> bool:
-        # Only trigger full rescan if scene changed significantly
         new_labels = set(i.get('label','').lower() for i in new_items)
-        stable_labels = set(self._stable.keys())
-        # Rescan if more than 2 new items appeared or disappeared
+        stable_labels = set(t.get('last_item', {}).get('label', '').lower() for t in self._tracks.values() if t.get('state') == 'confirmed')
         diff = len(new_labels.symmetric_difference(stable_labels))
         return diff > 2
     
     def reset(self):
+        self._tracks = {}
         self._history = {}
         self._stable = {}
 
@@ -1361,6 +1663,10 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
     if _apply_consensus:
         tracker = get_consensus_tracker(user_id or "default")
         data["items"] = tracker.update(items)
+    try:
+        await async_client.close()
+    except Exception:
+        pass
     return data
 
 
