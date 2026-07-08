@@ -47,13 +47,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Scheduler (auto-start on boot) ───────────────────────────────
-try:
-    from trend_scheduler import start_scheduler
-    start_scheduler()
-except Exception as e:
-    log.warning(f"[API] Trend scheduler not started: {e}")
-
 @app.on_event("startup")
 async def startup_event():
     from pipeline.knowledge.graph_query import get_driver
@@ -63,6 +56,13 @@ async def startup_event():
     except Exception as e:
         log.warning(f"[API] Neo4j startup warning: {e}")
 
+    try:
+        from trend_scheduler import start_scheduler
+        start_scheduler()
+        log.info("[API] Proactive TrendScheduler initialized on startup.")
+    except Exception as e:
+        log.error(f"[API] Trend scheduler startup failed: {e}", exc_info=True)
+
 @app.on_event("shutdown")
 async def shutdown_event():
     from pipeline.knowledge.graph_query import close_driver
@@ -71,6 +71,13 @@ async def shutdown_event():
         log.info("[API] Neo4j driver closed on shutdown.")
     except Exception as e:
         log.warning(f"[API] Neo4j shutdown warning: {e}")
+
+    try:
+        from trend_scheduler import stop_scheduler
+        stop_scheduler()
+        log.info("[API] Proactive TrendScheduler stopped on shutdown.")
+    except Exception as e:
+        log.warning(f"[API] Trend scheduler shutdown warning: {e}")
 
 # ── Imports (graceful) ───────────────────────────────────────────
 from shaaru_brain import chat_with_riley_cached, detect_tailor_intent
