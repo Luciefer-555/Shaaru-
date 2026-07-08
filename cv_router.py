@@ -50,6 +50,14 @@ class CorrectionRequest(BaseModel):
     confidence: Optional[float] = 0.0
     user_id: Optional[str] = "default"
 
+class EnrichFabricRequest(BaseModel):
+    image_b64: str
+    track_id: str
+    bbox: dict
+    label: str
+    category: str
+    user_id: Optional[str] = "default"
+
 
 # ══════════════════════════════════════════════════════════════════
 #  POST /api/cv/scan
@@ -362,3 +370,38 @@ async def cv_correct(req: CorrectionRequest):
         log.error(f"[CV CORRECT] Failed to write correction log: {e}")
         return {"status": "error", "error": str(e)}
 
+
+@router.post("/enrich-fabric")
+async def cv_enrich_fabric(req: EnrichFabricRequest):
+    """
+    Asynchronously enrich the fabric_type of a detected item from its cropped bounding box.
+    Runs hierarchical _SCAN_PROMPT on 90B (35s timeout) -> 11B fallback (15s timeout).
+    Updates ConsensusTracker so subsequent synchronous scans preserve the enriched fabric.
+    """
+    try:
+        from cv_engine import enrich_item_fabric_async
+        res = await enrich_item_fabric_async(
+            image_b64=req.image_b64,
+            bbox=req.bbox,
+            label=req.label,
+            category=req.category,
+            track_id=req.track_id,
+            user_id=req.user_id or "default"
+        )
+        return {
+            "track_id": req.track_id,
+            "fabric_type": res.get("fabric_type", "uncertain"),
+            "fabric_reason": res.get("fabric_reason", ""),
+            "confidence": res.get("confidence", 0.8),
+            "status": "success"
+        }
+    except Exception as e:
+        log.warning(f"[CV ENRICH FABRIC] Error for track_id={req.track_id}: {e}")
+        return {
+            "track_id": req.track_id,
+            "fabric_type": "uncertain",
+            "fabric_reason": "async enrichment failed",
+            "confidence": 0.5,
+            "status": "error",
+            "error": str(e)
+        }

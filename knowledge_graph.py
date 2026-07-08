@@ -75,7 +75,7 @@ class KnowledgeGraph:
     def query_pairings(self, aesthetics: list) -> list:
         """Find trending style pairings for given aesthetics."""
         cypher = """
-        MATCH (a:Aesthetic)-[:COMPLEMENTS]->(b:Aesthetic)
+        MATCH (a:Aesthetic)-[:PAIRS_WITH|COMPLEMENTS]->(b:Aesthetic)
         WHERE a.name IN $aesthetics
         RETURN a.name AS base, b.name AS pair, 1.0 AS score
         ORDER BY score DESC
@@ -86,7 +86,7 @@ class KnowledgeGraph:
     def query_item_pairings(self, item_name: str) -> list:
         """Find pairing suggestions for a specific item."""
         cypher = """
-        MATCH (base:Aesthetic)-[:COMPLEMENTS]->(pair:Aesthetic)
+        MATCH (base:Aesthetic)-[:PAIRS_WITH|COMPLEMENTS]->(pair:Aesthetic)
         WHERE toLower(base.name) CONTAINS toLower($item_name)
         RETURN pair.name AS paired_item, "style pairing" AS technique,
                1.0 AS score
@@ -150,7 +150,7 @@ class KnowledgeGraph:
         cypher = """
         MATCH (a:Aesthetic)
         WHERE a.name IN $aesthetics
-        OPTIONAL MATCH (a)-[:COMPLEMENTS]->(pair:Aesthetic)
+        OPTIONAL MATCH (a)-[:PAIRS_WITH|COMPLEMENTS]->(pair:Aesthetic)
         RETURN a.name AS aesthetic, [] AS items,
                collect(DISTINCT pair.name)[..3] AS pairs
         LIMIT 5
@@ -170,6 +170,30 @@ class KnowledgeGraph:
             lines.append(line)
 
         return "Style graph:\n" + "\n".join(lines)
+
+    def query_color_pairings(self, colors: list) -> list:
+        """Find complementary and clashing colors for given colors."""
+        if not self.is_connected or not colors:
+            return []
+        cypher = """
+        MATCH (c:Color)-[r:COMPLEMENTS|CLASHES_WITH]->(x:Color)
+        WHERE toLower(c.name) IN $colors
+        RETURN c.name AS base_color, type(r) AS rel_type, x.name AS target_color
+        LIMIT 15
+        """
+        return self.query(cypher, {"colors": [str(c).lower() for c in colors]})
+
+    def query_fabric_requirements(self, aesthetics: list) -> list:
+        """Find required/associated fabrics for given aesthetics."""
+        if not self.is_connected or not aesthetics:
+            return []
+        cypher = """
+        MATCH (a:Aesthetic)-[:REQUIRES_FABRIC]->(f:Fabric)
+        WHERE a.name IN $aesthetics
+        RETURN a.name AS aesthetic, f.name AS fabric
+        LIMIT 15
+        """
+        return self.query(cypher, {"aesthetics": aesthetics})
 
     def seed_aesthetic_edges(self) -> None:
         """
@@ -393,6 +417,8 @@ class _FallbackKG:
     def query_influencer_picks(self, *a, **kw): return []
     def get_fashion_context(self, *a, **kw): return ""
     def get_style_graph_context(self, *a, **kw): return ""
+    def query_color_pairings(self, *a, **kw): return []
+    def query_fabric_requirements(self, *a, **kw): return []
     def sync_product_document(self, *a, **kw): return False
     def close(self): pass
 
