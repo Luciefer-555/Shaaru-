@@ -4,6 +4,7 @@ import time
 import schedule
 import asyncio
 import datetime
+import logging
 
 pipeline_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 root_dir = os.path.abspath(os.path.join(pipeline_dir, ".."))
@@ -12,6 +13,8 @@ if root_dir not in sys.path: sys.path.append(root_dir)
 
 from pipeline.trend_watch.trend_detector import TrendDetector
 from pipeline.api.on_demand_extractor import OnDemandExtractor
+
+log = logging.getLogger("shaaru.scheduler")
 
 
 class TrendScheduler:
@@ -24,21 +27,46 @@ class TrendScheduler:
         self.detector = TrendDetector()
         self.extractor = OnDemandExtractor()
     
-    def start(self):
+    def _run_trend_ingestion(self):
+        log.info("[SCHEDULER] Firing scheduled trend/styling ingestion (trend_ingestion.py)...")
+        try:
+            from trend_ingestion import run_pipeline
+            res = run_pipeline()
+            log.info(f"[SCHEDULER] Scheduled trend ingestion completed successfully: {res}")
+        except Exception as e:
+            log.error(f"[SCHEDULER] Scheduled trend ingestion failed: {e}", exc_info=True)
+
+    def start(self, stop_event=None):
+        log.info("[SCHEDULER] Initializing TrendScheduler jobs...")
+        # Clear existing jobs on start to prevent duplicate schedules on restart/redeploy
+        schedule.clear()
+
         # Run daily at 6 AM
         schedule.every().day.at("06:00").do(
             lambda: asyncio.run(self.daily_trend_scan())
         )
+        schedule.every().day.at("06:00").do(self._run_trend_ingestion)
         
         # Check for fashion week (weekly)
         schedule.every().monday.at("09:00").do(
             lambda: asyncio.run(self.fashion_week_scan())
         )
+        schedule.every().monday.at("09:00").do(self._run_trend_ingestion)
         
-        print("[OK] Proactive TrendScheduler booted — monitoring editorial & Shopify arrivals")
+        log.info("[OK] Proactive TrendScheduler booted — monitoring editorial, Shopify arrivals & trend ingestion")
         while True:
-            schedule.run_pending()
-            time.sleep(60)
+            if stop_event and stop_event.is_set():
+                log.info("[SCHEDULER] Stop event detected, exiting scheduler loop cleanly.")
+                break
+            try:
+                schedule.run_pending()
+            except Exception as e:
+                log.error(f"[SCHEDULER] Unhandled error during schedule.run_pending(): {e}", exc_info=True)
+            # Sleep in 1-second increments up to 60s for responsive shutdown
+            for _ in range(60):
+                if stop_event and stop_event.is_set():
+                    break
+                time.sleep(1)
             
     def _check_neo4j(self, trend: dict) -> bool:
         try:
@@ -52,7 +80,7 @@ class TrendScheduler:
                     )
                     return bool(list(res))
         except Exception as e:
-            print(f"[TrendScheduler] Neo4j check error: {e}")
+            log.warning(f"[TrendScheduler] Neo4j check error: {e}")
         return False
 
     def _log_trend(self, trend: dict):
@@ -65,16 +93,16 @@ class TrendScheduler:
                     "processed_at": datetime.datetime.now(datetime.timezone.utc)
                 })
         except Exception as e:
-            print(f"[TrendScheduler] Log error: {e}")
+            log.error(f"[TrendScheduler] Log error: {e}")
 
     async def fashion_week_scan(self):
-        print("Running weekly fashion week scan...")
+        log.info("Running weekly fashion week scan...")
         trends = await self.detector.detect_trends()
         for t in trends[:5]:
             self._log_trend(t)
 
     async def daily_trend_scan(self):
-        print("Running daily trend scan...")
+        log.info("Running daily trend scan...")
         
         # Detect what's trending
         trends = await self.detector.detect_trends()
@@ -100,7 +128,7 @@ class TrendScheduler:
             # Log to trend_history
             self._log_trend(trend)
         
-        print(f"Trend scan complete — {len(trends)} trends processed")
+        log.info(f"Trend scan complete — {len(trends)} trends processed")
 
 
 if __name__ == "__main__":
