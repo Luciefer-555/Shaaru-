@@ -42,9 +42,12 @@ def generate_tts_audio(text: str, voice: str = "nova") -> Optional[str]:
                 voice=voice,
                 input=spoken_text
             )
+            log.info(f"[VOICE TTS] SUCCESS: OpenAI TTS tier fired (model='tts-1', voice='{voice}', chars={len(spoken_text)})")
+            print(f"[VOICE TTS] SUCCESS: OpenAI TTS tier fired (model='tts-1', voice='{voice}', chars={len(spoken_text)})")
             return base64.b64encode(response.content).decode("utf-8")
         except Exception as e:
             log.warning(f"[VOICE TTS] OpenAI TTS failed: {e}")
+            print(f"[VOICE TTS] OpenAI TTS failed: {e}")
 
     eleven_key = os.getenv("ELEVENLABS_API_KEY")
     if eleven_key:
@@ -64,9 +67,12 @@ def generate_tts_audio(text: str, voice: str = "nova") -> Optional[str]:
             }
             res = requests.post(url, json=data, headers=headers, timeout=10)
             if res.status_code == 200:
+                log.info(f"[VOICE TTS] SUCCESS: ElevenLabs tier fired (voice_id='{voice_id}')")
+                print(f"[VOICE TTS] SUCCESS: ElevenLabs tier fired (voice_id='{voice_id}')")
                 return base64.b64encode(res.content).decode("utf-8")
         except Exception as e:
             log.warning(f"[VOICE TTS] ElevenLabs TTS failed: {e}")
+            print(f"[VOICE TTS] ElevenLabs TTS failed: {e}")
 
     try:
         from gtts import gTTS
@@ -74,9 +80,12 @@ def generate_tts_audio(text: str, voice: str = "nova") -> Optional[str]:
         tts = gTTS(text=text[:500], lang="en")
         tts.write_to_fp(fp)
         fp.seek(0)
+        log.info("[VOICE TTS] SUCCESS: gTTS fallback tier fired")
+        print("[VOICE TTS] SUCCESS: gTTS fallback tier fired")
         return base64.b64encode(fp.read()).decode("utf-8")
     except Exception as e:
         log.warning(f"[VOICE TTS] gTTS fallback failed: {e}")
+        print(f"[VOICE TTS] gTTS fallback failed: {e}")
 
     return None
 
@@ -95,7 +104,8 @@ async def speech_to_text_and_chat(
     file: UploadFile = File(...),
     user_id: str = Form("user"),
     enable_tts: bool = Form(True),
-    image_base64: Optional[str] = Form(None)
+    image_base64: Optional[str] = Form(None),
+    scan_context: Optional[str] = Form(None)
 ):
     """
     Receive audio blob from browser mic, transcribe via STT,
@@ -119,14 +129,17 @@ async def speech_to_text_and_chat(
             )
             transcribed_text = transcription.text.strip()
             log.info(f"[VOICE STT] Transcribed via OpenAI Whisper: '{transcribed_text}'")
+            print(f"[VOICE STT] SUCCESS: Transcribed via OpenAI Whisper (model='whisper-1'): '{transcribed_text}'")
         except Exception as e:
             log.warning(f"[VOICE STT] OpenAI Whisper failed: {e}")
+            print(f"[VOICE STT] OpenAI Whisper failed: {e}")
 
     # Fallback if STT API key not present or failed
     if not transcribed_text:
         # Check if user provided fallback text header/form or use clean demo phrasing
         transcribed_text = "Can you give me styling advice on this outfit and what vibes match it?"
         log.info(f"[VOICE STT] Using fallback transcription: '{transcribed_text}'")
+        print(f"[VOICE STT] FALLBACK: Using fallback transcription: '{transcribed_text}'")
 
     # Pipe directly into Riley's existing chat handler
     from riley_brain import riley_think
@@ -139,8 +152,12 @@ async def speech_to_text_and_chat(
         if session:
             history = session.get("history", [])[-10:]
 
+    prompt_to_riley = transcribed_text
+    if scan_context and scan_context.strip():
+        prompt_to_riley = f"[SHAARU LIVE CAMERA — CURRENT SCAN CONTEXT: {scan_context.strip()}]\nUser says: {transcribed_text}"
+
     result = riley_think(
-        user_message=transcribed_text,
+        user_message=prompt_to_riley,
         user_id=user_id,
         conversation_history=history,
         image_base64=image_base64

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, Loader2, Mic, Zap } from "lucide-react";
 import { HandLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -172,7 +173,10 @@ function drawOverlay(
     ctx.fillText(`${conf}%`, x + bw - 30, y - 4);
 
     // ── Label pill ──────────────────────────────────────────────────────────
-    const rawLabel = `${item.corrected ? "✓ " : ""}${(item.label ?? "item").toLowerCase().trim()}`;
+    const fabricText = (!item.fabric_type || item.fabric_type === "pending")
+      ? "detecting fabric..."
+      : item.fabric_type;
+    const rawLabel = `${item.corrected ? "✓ " : ""}${(item.label ?? "item").toLowerCase().trim()} • ${fabricText}`;
     ctx.font = 'bold 13px "Courier New", monospace';
     const maxTextW = canvasW * 0.40;
     const padX = 8;
@@ -415,18 +419,32 @@ export function CameraScanner({
   const [analyzing, setAnalyzing]         = useState(false);
 
   // ── Voice state ───────────────────────────────────────────────────────────
-  const [isRecordingVoice, setIsRecordingVoice]       = useState(false);
-  const [isTranscribingVoice, setIsTranscribingVoice] = useState(false);
+  const [userTranscript, setUserTranscript]           = useState<string | null>(null);
   const [voiceReply, setVoiceReply]                   = useState<string | null>(null);
+  const [isFadingOut, setIsFadingOut]                 = useState(false);
+
+  const {
+    isRecording: isRecordingVoice,
+    isTranscribing: isTranscribingVoice,
+    toggleRecording: toggleVoice,
+  } = useVoiceInput({
+    onResult: (res) => {
+      if (res.transcribed_text) setUserTranscript(res.transcribed_text);
+      if (res.reply) setVoiceReply(res.reply);
+    },
+    onError: (err) => {
+      console.error("[CameraScanner] voice error:", err);
+    }
+  });
 
   // ── Refs ──────────────────────────────────────────────────────────────────
+  const dismissTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isRecordingRef    = useRef<boolean>(false);
   const videoRef          = useRef<HTMLVideoElement>(null);
   const overlayCanvasRef  = useRef<HTMLCanvasElement>(null);
   const hiddenCanvasRef   = useRef<HTMLCanvasElement>(null);
   const cameraStreamRef   = useRef<MediaStream | null>(null);
   const lastCapturedB64   = useRef<string | null>(null);
-  const voiceRecorderRef  = useRef<MediaRecorder | null>(null);
-  const voiceChunksRef    = useRef<Blob[]>([]);
   const handLandmarkerRef = useRef<HandLandmarker | null>(null);
   const dwellTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dwellItemRef      = useRef<string | null>(null);
@@ -436,6 +454,7 @@ export function CameraScanner({
 
   // ── Persistent tracking map keyed by track_id ──
   const trackedItemsRef = useRef<Map<string, TrackedBox>>(new Map());
+  const enrichingSetRef = useRef<Set<string>>(new Set());
 
   // ─────────────────────────────────────────────────────────────────────────
   // 1 — Camera init
@@ -698,7 +717,11 @@ export function CameraScanner({
               existing.category = item.category || existing.category;
               existing.color = item.color || existing.color;
               existing.aesthetic = item.aesthetic || existing.aesthetic;
-              existing.fabric_type = item.fabric_type || existing.fabric_type;
+              if (item.fabric_type && item.fabric_type !== "pending") {
+                existing.fabric_type = item.fabric_type;
+              } else if (!existing.fabric_type) {
+                existing.fabric_type = item.fabric_type || "pending";
+              }
             }
 
             existing.targetOpacity = existing.state === "coasting" ? 0.7 : 1.0;
@@ -721,6 +744,37 @@ export function CameraScanner({
         trackedItemsRef.current.forEach((tracked, tid) => {
           if (!incomingTrackIds.has(tid)) {
             tracked.targetOpacity = 0.0;
+          } else if (
+            (tracked.fabric_type === "pending" || !tracked.fabric_type) &&
+            !tracked.corrected &&
+            tracked.state !== "coasting" &&
+            !enrichingSetRef.current.has(tid)
+          ) {
+            enrichingSetRef.current.add(tid);
+            fetch(`${apiUrl}/api/cv/enrich-fabric`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                image_b64: frameB64,
+                track_id: tid,
+                bbox: tracked.bbox,
+                label: tracked.label || "garment",
+                category: tracked.category || "top",
+                user_id: userId || "default",
+              }),
+            })
+              .then((res) => res.json())
+              .then((resData) => {
+                const currentTrack = trackedItemsRef.current.get(tid);
+                if (currentTrack && !currentTrack.corrected && resData?.fabric_type && resData.fabric_type !== "pending") {
+                  currentTrack.fabric_type = resData.fabric_type;
+                  setTrackedVersion((v) => v + 1);
+                }
+              })
+              .catch((e) => console.warn("[Enrich Fabric] Failed:", e))
+              .finally(() => {
+                enrichingSetRef.current.delete(tid);
+              });
           }
         });
 
@@ -988,56 +1042,64 @@ export function CameraScanner({
   };
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 9 — Voice
+  // 9 — Voice & Auto-Dismiss Timer
   // ─────────────────────────────────────────────────────────────────────────
 
-  const toggleLiveVoice = async () => {
-    if (isRecordingVoice) {
-      voiceRecorderRef.current?.stop();
-      setIsRecordingVoice(false);
+  useEffect(() => {
+    isRecordingRef.current = isRecordingVoice;
+  }, [isRecordingVoice]);
+
+  useEffect(() => {
+    // Clear any existing timer when dependencies change (resets timer on new pairs)
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+
+    // If no text overlay active, reset fading state and return
+    if (!userTranscript && !voiceReply) {
+      setIsFadingOut(false);
       return;
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      voiceChunksRef.current = [];
-      const rec = new MediaRecorder(stream);
-      rec.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) voiceChunksRef.current.push(e.data);
-      };
-      rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(voiceChunksRef.current, { type: "audio/webm" });
-        setIsTranscribingVoice(true);
-        try {
-          const formData = new FormData();
-          formData.append("file", blob, "live_voice.webm");
-          formData.append("user_id", userId || "default");
-          formData.append("enable_tts", "true");
-          if (lastCapturedB64.current) {
-            formData.append("image_base64", lastCapturedB64.current);
-          }
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-          const res = await fetch(`${apiUrl}/api/voice/stt`, { method: "POST", body: formData });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.reply) setVoiceReply(data.reply);
-            if (data.audio_base64) {
-              const audio = new Audio(`data:audio/mp3;base64,${data.audio_base64}`);
-              audio.play().catch(() => {});
-            }
-          }
-        } catch (err) {
-          console.error("[LIVE VOICE] error:", err);
-        } finally {
-          setIsTranscribingVoice(false);
-        }
-      };
-      voiceRecorderRef.current = rec;
-      rec.start();
-      setIsRecordingVoice(true);
-    } catch (err) {
-      console.error("[LIVE VOICE] mic error:", err);
+
+    // Ensure panel is visible when new content arrives
+    setIsFadingOut(false);
+
+    // If actively recording or transcribing, pause countdown so it doesn't dismiss mid-question
+    if (isRecordingVoice || isTranscribingVoice) {
+      return;
     }
+
+    // Start 10-second inactivity countdown
+    dismissTimerRef.current = setTimeout(() => {
+      // Safety check: if user started recording right as timer fired
+      if (isRecordingRef.current) return;
+      
+      setIsFadingOut(true);
+      setTimeout(() => {
+        setUserTranscript(null);
+        setVoiceReply(null);
+        setIsFadingOut(false);
+      }, 300);
+    }, 10000);
+
+    return () => {
+      if (dismissTimerRef.current) {
+        clearTimeout(dismissTimerRef.current);
+      }
+    };
+  }, [userTranscript, voiceReply, isRecordingVoice, isTranscribingVoice]);
+
+  const toggleLiveVoice = () => {
+    const activeItems = Array.from(trackedItemsRef.current.values())
+      .filter((i) => (i.targetOpacity ?? 0) > 0 || (i.opacity ?? 0) > 0)
+      .map((i) => `${i.color || ""} ${i.label} (${i.category || "item"}, ${i.aesthetic || "casual"} vibe, fabric: ${i.fabric_type || "unknown"})`.trim());
+    
+    const scanContextStr = activeItems.length > 0 
+      ? activeItems.join("; ") 
+      : "No items currently detected in camera view.";
+
+    toggleVoice(scanContextStr, userId || "default");
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1095,12 +1157,44 @@ export function CameraScanner({
             <X className="w-5 h-5 text-white" />
           </button>
 
-          {/* Voice reply toast */}
-          {voiceReply && (
-            <div className="absolute top-16 left-4 right-4 z-20 pointer-events-none">
-              <div className="bg-black/75 border border-[#39FF14]/30 rounded-xl px-4 py-3 backdrop-blur-sm">
-                <p className="font-mono text-xs text-[#39FF14]/80 mb-1">RILEY</p>
-                <p className="font-mono text-sm text-white leading-relaxed">{voiceReply}</p>
+          {/* Voice transcript & reply panel */}
+          {(userTranscript || voiceReply) && (
+            <div
+              className={`absolute top-16 left-4 right-4 z-20 max-w-md mx-auto pointer-events-auto transition-all duration-300 ${
+                isFadingOut
+                  ? "opacity-0 -translate-y-2"
+                  : "opacity-100 translate-y-0 animate-in fade-in slide-in-from-top-2 duration-300"
+              }`}
+            >
+              <div className="bg-black/85 border border-[#A855F7]/40 rounded-xl p-4 shadow-xl backdrop-blur-md relative">
+                <button
+                  onClick={() => {
+                    setUserTranscript(null);
+                    setVoiceReply(null);
+                    setIsFadingOut(false);
+                  }}
+                  className="absolute top-2.5 right-2.5 p-1 text-white/50 hover:text-white transition-colors"
+                  title="Dismiss"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                {userTranscript && (
+                  <div className="mb-3 pr-6">
+                    <p className="font-mono text-[10px] text-[#A855F7] tracking-wider mb-0.5 uppercase">YOU</p>
+                    <p className="font-sans text-xs text-white/90 leading-relaxed italic">&ldquo;{userTranscript}&rdquo;</p>
+                  </div>
+                )}
+
+                {voiceReply && (
+                  <div>
+                    <p className="font-mono text-[10px] text-[#39FF14] tracking-wider mb-0.5 uppercase flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#39FF14] animate-pulse"></span>
+                      RILEY
+                    </p>
+                    <p className="font-sans text-sm text-white font-medium leading-relaxed">{voiceReply}</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
