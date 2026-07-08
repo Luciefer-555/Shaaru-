@@ -194,7 +194,7 @@ def execute_tool(tool_name: str, arguments: dict, user_id: str) -> str:
             r['price'] = r['pricing'].get('price_inr')
             del r['pricing']
 
-    return json.dumps({'products': results, 'query': query})
+    return json.dumps({'products': results, 'query': query}, default=str)
 
   elif tool_name == 'trigger_tailor_flow':
     confirmed = arguments.get('confirmed', False)
@@ -362,6 +362,7 @@ CRITICAL RULES:
 - Don't over-trigger tools — a compliment is just a compliment, not a search query
 - Plain conversation needs no tool calls
 - Never proactively mention or volunteer past Lens scans unless the user's message refers to the garment, fabric, tailoring, or styling of that item
+- CONFIDENCE-AWARE FABRIC HEDGING: When discussing garments or recent scans, if a fabric type has low/penalized confidence (< 0.75) or is marked 'uncertain', always hedge your language naturally (e.g., 'looks like it could be cotton poplin', 'seems like a ribbed knit, though I'm not 100% sure'). Never state uncertain fabric claims as flat fact! If confidence is very low (< 0.45), describe by silhouette/color instead.
 
 TAILOR FLOW RULES:
 Before calling trigger_tailor_flow, you MUST have collected:

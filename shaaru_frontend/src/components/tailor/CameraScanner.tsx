@@ -20,7 +20,29 @@ export type ScannedItem = {
   bbox: BBox;
   confidence: number;
   pixel_boxes?: { id: string; xyxy: number[] }[];
+  track_id?: string;
+  state?: "new" | "confirmed" | "coasting";
+  fabric_type?: string;
+  corrected?: boolean;
+  pillBounds?: { x: number; y: number; w: number; h: number };
 };
+
+export type TrackedBox = ScannedItem & {
+  track_id: string;
+  state: "new" | "confirmed" | "coasting";
+  currentBbox: BBox;
+  targetBbox: BBox;
+  opacity: number;
+  targetOpacity: number;
+};
+
+const TAXONOMY_CATEGORIES = ["top", "bottom", "outerwear", "footwear", "accessory", "dress", "set"];
+const TAXONOMY_FABRICS = [
+  "poplin", "denim", "linen", "canvas", "corduroy", "twill", "chambray",
+  "ribbed knit", "jersey knit", "cable knit", "waffle knit",
+  "genuine leather", "faux/PU leather", "suede",
+  "wool", "wool-blend", "silk", "satin/crepe", "velvet", "organza"
+];
 
 type MissingPiece = { role: string; find: string };
 
@@ -80,7 +102,7 @@ interface PlacedLabel {
 
 function drawOverlay(
   ctx: CanvasRenderingContext2D,
-  items: ScannedItem[],
+  trackedMap: Map<string, TrackedBox>,
   canvasW: number,
   canvasH: number
 ) {
@@ -92,8 +114,8 @@ function drawOverlay(
 
   const placedLabels: PlacedLabel[] = [];
 
-  items.forEach((item) => {
-    const bbox = item.bbox;
+  trackedMap.forEach((item) => {
+    const bbox = item.currentBbox || item.bbox;
     if (!bbox) return;
 
     const x  = bbox.x * canvasW;
@@ -102,6 +124,9 @@ function drawOverlay(
     const bh = bbox.h * canvasH;
 
     if (bw < 16 || bh < 16) return;
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, item.opacity ?? 1.0));
 
     const color = catColor(item.category);
     const bracketSize = Math.min(bw, bh) * 0.2;
@@ -147,15 +172,51 @@ function drawOverlay(
     ctx.fillText(`${conf}%`, x + bw - 30, y - 4);
 
     // ── Label pill ──────────────────────────────────────────────────────────
-    let label = (item.label ?? "item").toLowerCase();
-    if (label.length > 18) label = label.slice(0, 17) + "…";
-
+    const rawLabel = `${item.corrected ? "✓ " : ""}${(item.label ?? "item").toLowerCase().trim()}`;
+    ctx.font = 'bold 13px "Courier New", monospace';
+    const maxTextW = canvasW * 0.40;
     const padX = 8;
     const padY = 4;
-    ctx.font = 'bold 13px "Courier New", monospace';
-    const textW  = ctx.measureText(label).width;
-    const labelW = textW + padX * 2 + 14; // 14 for dot
-    const labelH = 22;
+
+    const words = rawLabel.split(/\s+/);
+    const lines: string[] = [];
+    let currentLine = "";
+
+    for (const word of words) {
+      let w = word;
+      if (ctx.measureText(w).width > maxTextW) {
+        while (w.length > 1 && ctx.measureText(w + "…").width > maxTextW) {
+          w = w.slice(0, -1);
+        }
+        w = w + "…";
+      }
+
+      const testLine = currentLine ? `${currentLine} ${w}` : w;
+      if (ctx.measureText(testLine).width <= maxTextW) {
+        currentLine = testLine;
+      } else {
+        if (currentLine) lines.push(currentLine);
+        currentLine = w;
+        if (lines.length === 2) {
+          let second = lines.pop()!;
+          while (second.length > 1 && ctx.measureText(second + "…").width > maxTextW) {
+            second = second.slice(0, -1);
+          }
+          lines.push(second + "…");
+          currentLine = "";
+          break;
+        }
+      }
+    }
+    if (currentLine && lines.length < 2) {
+      lines.push(currentLine);
+    }
+    if (lines.length === 0) lines.push("item");
+
+    const isTwoLines = lines.length > 1;
+    const maxLineW = Math.max(...lines.map((l) => ctx.measureText(l).width), 20);
+    const labelW = maxLineW + padX * 2 + 14; // 14 for dot
+    const labelH = isTwoLines ? 38 : 22;
 
     // Position: below box if box centre is in top half, else above
     const boxCentreY = y + bh / 2;
@@ -171,21 +232,47 @@ function drawOverlay(
     // Overlap resolution — nudge lower-priority labels
     let attempts = 0;
     while (attempts < 6) {
-      const overlaps = placedLabels.some(
+      const pl = placedLabels.find(
         (pl) =>
           labelX < pl.x + pl.w &&
           labelX + labelW > pl.x &&
           labelY < pl.y + pl.h &&
           labelY + labelH > pl.y
       );
-      if (!overlaps) break;
-      labelY += labelH + 6;
+      if (!pl) break;
+
+      const spaceBelow = canvasH - (pl.y + pl.h + 6 + labelH);
+      const spaceAbove = pl.y - 6 - labelH;
+      const maxVertSpace = Math.max(spaceBelow, spaceAbove);
+
+      const spaceRight = canvasW - (pl.x + pl.w + 6 + labelW);
+      const spaceLeft  = pl.x - 6 - labelW;
+      const maxHorizSpace = Math.max(spaceRight, spaceLeft);
+
+      if (maxHorizSpace > maxVertSpace && maxHorizSpace >= 0) {
+        if (spaceRight >= spaceLeft) {
+          labelX = pl.x + pl.w + 6;
+        } else {
+          labelX = pl.x - labelW - 6;
+        }
+      } else if (maxVertSpace >= 0) {
+        if (spaceBelow >= spaceAbove) {
+          labelY = pl.y + pl.h + 6;
+        } else {
+          labelY = pl.y - labelH - 6;
+        }
+      } else {
+        labelY += labelH + 6;
+      }
+
       // Re-clamp after nudge
+      labelX = Math.max(2, Math.min(labelX, canvasW - labelW - 2));
       labelY = Math.max(2, Math.min(labelY, canvasH - labelH - 2));
       attempts++;
     }
 
     placedLabels.push({ x: labelX, y: labelY, w: labelW, h: labelH });
+    item.pillBounds = { x: labelX, y: labelY, w: labelW, h: labelH };
 
     // Pill background
     ctx.fillStyle = "rgba(0,0,0,0.80)";
@@ -198,8 +285,8 @@ function drawOverlay(
     ctx.fill();
 
     // Pill border
-    ctx.strokeStyle = `${color}55`;
-    ctx.lineWidth = 0.8;
+    ctx.strokeStyle = item.corrected ? "#00E5FF" : `${color}55`;
+    ctx.lineWidth = item.corrected ? 1.5 : 0.8;
     ctx.stroke();
 
     // Color dot
@@ -211,7 +298,14 @@ function drawOverlay(
     // Label text
     ctx.fillStyle = "#ffffff";
     ctx.font = 'bold 13px "Courier New", monospace';
-    ctx.fillText(label, labelX + 18, labelY + labelH - padY - 1);
+    if (isTwoLines) {
+      ctx.fillText(lines[0] || "", labelX + 18, labelY + 16);
+      ctx.fillText(lines[1] || "", labelX + 18, labelY + 31);
+    } else {
+      ctx.fillText(lines[0] || "", labelX + 18, labelY + labelH - padY - 1);
+    }
+
+    ctx.restore();
   });
 }
 
@@ -304,14 +398,18 @@ export function CameraScanner({
   const [cameraError, setCameraError]    = useState<string | null>(null);
 
   // ── Scan state ────────────────────────────────────────────────────────────
-  const [currentItems, setCurrentItems]       = useState<ScannedItem[]>([]);
-  const [lastGoodItems, setLastGoodItems]     = useState<ScannedItem[]>([]);
+  const [, setTrackedVersion]                 = useState(0);
   const [isLiveScanning, setIsLiveScanning]   = useState(false);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [selectedItem, setSelectedItem]   = useState<ScannedItem | null>(null);
   const [showItemSheet, setShowItemSheet] = useState(false);
   const [showCombosSheet, setShowCombosSheet] = useState(false);
+  const [showCorrectionSheet, setShowCorrectionSheet] = useState(false);
+  const [correctingItem, setCorrectingItem] = useState<TrackedBox | null>(null);
+  const [editLabel, setEditLabel]         = useState("");
+  const [editCategory, setEditCategory]   = useState("top");
+  const [editFabric, setEditFabric]       = useState("poplin");
   const [combos, setCombos]               = useState<StyleCombo[]>([]);
   const [loadingCombos, setLoadingCombos] = useState(false);
   const [analyzing, setAnalyzing]         = useState(false);
@@ -336,9 +434,8 @@ export function CameraScanner({
   const isSpeakingRef     = useRef<boolean>(false);
   const rafRef            = useRef<number>(0);
 
-  // ── Keep a stable ref to currentItems for use inside intervals/callbacks ──
-  const currentItemsRef = useRef<ScannedItem[]>([]);
-  useEffect(() => { currentItemsRef.current = currentItems; }, [currentItems]);
+  // ── Persistent tracking map keyed by track_id ──
+  const trackedItemsRef = useRef<Map<string, TrackedBox>>(new Map());
 
   // ─────────────────────────────────────────────────────────────────────────
   // 1 — Camera init
@@ -556,7 +653,8 @@ export function CameraScanner({
         lastCapturedB64.current = frameB64;
 
         // Hand tracking on the live frame
-        processHandTracking(videoRef.current, performance.now(), frameB64, currentItemsRef.current);
+        const activeItems = Array.from(trackedItemsRef.current.values()).filter((i) => i.targetOpacity > 0);
+        processHandTracking(videoRef.current, performance.now(), frameB64, activeItems);
 
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
         const resp = await fetch(`${apiUrl}/api/cv/scan`, {
@@ -572,14 +670,61 @@ export function CameraScanner({
 
         const data = await resp.json();
 
-        if (data.items && data.items.length > 0) {
-          const top4 = [...data.items]
-            .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
-            .slice(0, 4);
-          setCurrentItems(top4);
-          setLastGoodItems(top4);
-        }
-        // If 0 items: keep lastGoodItems on screen (handled in render via displayItems)
+        const incomingItems: ScannedItem[] = data.items || [];
+        const CONFIDENCE_FLOOR = 0.55;
+        const filtered = incomingItems.filter(
+          (i) => (i.confidence ?? 0) >= CONFIDENCE_FLOOR || i.state === "coasting"
+        );
+        const top4 = [...filtered]
+          .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+          .slice(0, 4);
+
+        const incomingTrackIds = new Set<string>();
+        top4.forEach((item) => {
+          const tid = item.track_id || item.id;
+          if (!tid || !item.bbox) return;
+          incomingTrackIds.add(tid);
+
+          const existing = trackedItemsRef.current.get(tid);
+          if (existing) {
+            existing.targetBbox = { ...item.bbox };
+            existing.confidence = item.confidence ?? existing.confidence;
+            existing.state = item.state || "confirmed";
+            if (item.pixel_boxes) existing.pixel_boxes = item.pixel_boxes;
+
+            if (!existing.corrected) {
+              existing.label = item.label || existing.label;
+              existing.description = item.description || existing.description;
+              existing.category = item.category || existing.category;
+              existing.color = item.color || existing.color;
+              existing.aesthetic = item.aesthetic || existing.aesthetic;
+              existing.fabric_type = item.fabric_type || existing.fabric_type;
+            }
+
+            existing.targetOpacity = existing.state === "coasting" ? 0.7 : 1.0;
+          } else {
+            const bboxCopy = { ...item.bbox };
+            trackedItemsRef.current.set(tid, {
+              ...item,
+              id: item.id || tid,
+              track_id: tid,
+              state: item.state || "new",
+              currentBbox: bboxCopy,
+              targetBbox: { ...item.bbox },
+              bbox: bboxCopy,
+              opacity: 0.0,
+              targetOpacity: item.state === "coasting" ? 0.7 : 1.0,
+            });
+          }
+        });
+
+        trackedItemsRef.current.forEach((tracked, tid) => {
+          if (!incomingTrackIds.has(tid)) {
+            tracked.targetOpacity = 0.0;
+          }
+        });
+
+        setTrackedVersion((v) => v + 1);
       } catch (err) {
         console.warn("[Scan] Frame failed:", err);
         // Keep last good result — no state change needed
@@ -601,8 +746,10 @@ export function CameraScanner({
   // 5 — Canvas overlay rendering (redraw on item change + rAF loop for HUD)
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Items to actually display: currentItems if non-empty, else lastGoodItems
-  const displayItems = currentItems.length > 0 ? currentItems : lastGoodItems;
+  // Items to actually display/interact with: active tracked items that are not fading out
+  const displayItems = Array.from(trackedItemsRef.current.values()).filter(
+    (item) => item.targetOpacity > 0
+  );
 
   const redrawOverlay = useCallback(() => {
     const canvas = overlayCanvasRef.current;
@@ -621,17 +768,46 @@ export function CameraScanner({
       canvas.height = h;
     }
 
-    // Draw item overlays
-    drawOverlay(ctx, displayItems, w, h);
+    // Draw item overlays from persistent tracking map
+    drawOverlay(ctx, trackedItemsRef.current, w, h);
     // Draw HUD on top
     drawHUD(ctx, w, h, isLiveScanning);
-  }, [displayItems, isLiveScanning]);
+  }, [isLiveScanning]);
 
-  // rAF loop so HUD clock ticks live
+  // rAF loop for per-frame bbox/opacity interpolation and live HUD
   useEffect(() => {
     let running = true;
     const loop = () => {
       if (!running) return;
+
+      let pruned = false;
+      trackedItemsRef.current.forEach((item, tid) => {
+        // LERP bbox toward targetBbox
+        item.currentBbox.x += (item.targetBbox.x - item.currentBbox.x) * 0.15;
+        item.currentBbox.y += (item.targetBbox.y - item.currentBbox.y) * 0.15;
+        item.currentBbox.w += (item.targetBbox.w - item.currentBbox.w) * 0.15;
+        item.currentBbox.h += (item.targetBbox.h - item.currentBbox.h) * 0.15;
+
+        // Keep item.bbox synced with currentBbox for touch / combos / hand tracking
+        item.bbox.x = item.currentBbox.x;
+        item.bbox.y = item.currentBbox.y;
+        item.bbox.w = item.currentBbox.w;
+        item.bbox.h = item.currentBbox.h;
+
+        // LERP opacity toward targetOpacity
+        item.opacity += (item.targetOpacity - item.opacity) * 0.15;
+
+        // Remove from map once fade-out completes
+        if (item.targetOpacity === 0.0 && item.opacity < 0.02) {
+          trackedItemsRef.current.delete(tid);
+          pruned = true;
+        }
+      });
+
+      if (pruned) {
+        setTrackedVersion((v) => v + 1);
+      }
+
       redrawOverlay();
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -646,9 +822,55 @@ export function CameraScanner({
   // 6 — Tap detection on camera view
   // ─────────────────────────────────────────────────────────────────────────
 
+  const handleConfirmCorrection = async () => {
+    if (!correctingItem) return;
+    const tid = correctingItem.track_id || correctingItem.id;
+    const existing = trackedItemsRef.current.get(tid);
+    if (!existing) return;
+
+    const orig = {
+      label: existing.label,
+      category: existing.category,
+      fabric_type: existing.fabric_type || "uncertain",
+    };
+
+    const corr = {
+      label: editLabel.trim() || existing.label,
+      category: editCategory,
+      fabric_type: editFabric,
+    };
+
+    existing.label = corr.label;
+    existing.category = corr.category;
+    existing.fabric_type = corr.fabric_type;
+    existing.corrected = true;
+
+    setShowCorrectionSheet(false);
+    setCorrectingItem(null);
+    setTrackedVersion((v) => v + 1);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      await fetch(`${apiUrl}/api/cv/correct`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          track_id: tid,
+          original: orig,
+          corrected: corr,
+          confidence: existing.confidence ?? 0.0,
+          user_id: userId || "default",
+        }),
+      });
+    } catch (err) {
+      console.error("[Correction] Log failed:", err);
+    }
+  };
+
   const handleCameraTap = (e: React.TouchEvent | React.MouseEvent) => {
     // Don't dismiss sheet if tapping the sheet itself
     if (showCombosSheet) { setShowCombosSheet(false); return; }
+    if (showCorrectionSheet) { setShowCorrectionSheet(false); return; }
 
     const canvas = overlayCanvasRef.current;
     if (!canvas) return;
@@ -661,8 +883,31 @@ export function CameraScanner({
       ? (e.touches[0]?.clientY ?? (e as React.TouchEvent).changedTouches[0].clientY)
       : (e as React.MouseEvent).clientY;
 
-    const tapX = (clientX - rect.left)  / rect.width;
-    const tapY = (clientY - rect.top)   / rect.height;
+    const tapPxX = clientX - rect.left;
+    const tapPxY = clientY - rect.top;
+
+    // 1. Check if tap hits any confirmed item's label pill
+    const tappedPill = displayItems.find((item) => {
+      if (item.state !== "confirmed") return false;
+      const pb = item.pillBounds;
+      if (!pb) return false;
+      return tapPxX >= pb.x && tapPxX <= pb.x + pb.w && tapPxY >= pb.y && tapPxY <= pb.y + pb.h;
+    });
+
+    if (tappedPill) {
+      setCorrectingItem(tappedPill);
+      setEditLabel(tappedPill.label || "");
+      setEditCategory(tappedPill.category || "top");
+      setEditFabric(tappedPill.fabric_type || "poplin");
+      setShowCorrectionSheet(true);
+      setShowItemSheet(false);
+      setSelectedItem(null);
+      return;
+    }
+
+    // 2. Otherwise check if tap hits any item's bounding box
+    const tapX = tapPxX / rect.width;
+    const tapY = tapPxY / rect.height;
 
     const tapped = displayItems.find((item) => {
       const b = item.bbox;
@@ -673,9 +918,12 @@ export function CameraScanner({
     if (tapped) {
       setSelectedItem(tapped);
       setShowItemSheet(true);
+      setShowCorrectionSheet(false);
     } else {
       setShowItemSheet(false);
+      setShowCorrectionSheet(false);
       setSelectedItem(null);
+      setCorrectingItem(null);
     }
   };
 
@@ -1058,7 +1306,7 @@ export function CameraScanner({
 
                     <div className="px-4 pt-3 flex flex-wrap gap-1.5">
                       {combo.items_used.map((id) => {
-                        const item = displayItems.find((i) => i.id === id);
+                        const item = displayItems.find((i) => i.id === id || i.track_id === id);
                         if (!item) return null;
                         const color = catColor(item.category);
                         return (
@@ -1096,6 +1344,127 @@ export function CameraScanner({
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          Correction bottom sheet
+          ════════════════════════════════════════════════════════════════════ */}
+      <div
+        className="fixed inset-0 z-40 pointer-events-none"
+        style={{ display: showCorrectionSheet ? "block" : "none" }}
+      >
+        <div
+          className="absolute inset-0 bg-black/40 pointer-events-auto"
+          onClick={() => { setShowCorrectionSheet(false); setCorrectingItem(null); }}
+        />
+
+        <div
+          className="absolute bottom-0 left-0 right-0 pointer-events-auto max-h-[85vh] flex flex-col"
+          style={{
+            transform: showCorrectionSheet ? "translateY(0)" : "translateY(100%)",
+            transition: "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+          }}
+        >
+          <div className="bg-[#0a0a0a] border-t border-[#00E5FF]/30 rounded-t-2xl flex flex-col min-h-0">
+            {/* Header */}
+            <div className="px-5 pt-4 pb-3 flex-shrink-0 border-b border-white/10">
+              <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-mono font-bold text-base text-white tracking-wider flex items-center gap-2">
+                    <span className="text-[#00E5FF]">✓</span> CORRECT ITEM
+                  </h2>
+                  <p className="font-mono text-[10px] text-[#00E5FF] tracking-[0.15em] mt-0.5">
+                    Override label, category & fabric
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setShowCorrectionSheet(false); setCorrectingItem(null); }}
+                  className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
+              {/* Label Edit */}
+              <div>
+                <label className="block font-mono text-[10px] text-gray-400 uppercase tracking-wider mb-2">
+                  Displayed Label
+                </label>
+                <input
+                  type="text"
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                  className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2 font-mono text-sm text-white focus:outline-none focus:border-[#00E5FF] transition-colors"
+                  placeholder="e.g. denim jacket"
+                />
+              </div>
+
+              {/* Category Picker */}
+              <div>
+                <label className="block font-mono text-[10px] text-gray-400 uppercase tracking-wider mb-2">
+                  Category
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {TAXONOMY_CATEGORIES.map((cat) => {
+                    const isSelected = editCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setEditCategory(cat)}
+                        className={`font-mono text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                          isSelected
+                            ? "bg-[#00E5FF]/20 border-[#00E5FF] text-[#00E5FF] font-bold shadow-[0_0_10px_rgba(0,229,255,0.2)]"
+                            : "bg-white/5 border-white/10 text-gray-300 hover:border-white/30"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Fabric Picker */}
+              <div>
+                <label className="block font-mono text-[10px] text-gray-400 uppercase tracking-wider mb-2">
+                  Fabric Type
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {TAXONOMY_FABRICS.map((fab) => {
+                    const isSelected = editFabric === fab;
+                    return (
+                      <button
+                        key={fab}
+                        onClick={() => setEditFabric(fab)}
+                        className={`font-mono text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                          isSelected
+                            ? "bg-[#00E5FF]/20 border-[#00E5FF] text-[#00E5FF] font-bold shadow-[0_0_10px_rgba(0,229,255,0.2)]"
+                            : "bg-white/5 border-white/10 text-gray-300 hover:border-white/30"
+                        }`}
+                      >
+                        {fab}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer / Confirm */}
+            <div className="p-5 border-t border-white/10 flex-shrink-0">
+              <button
+                onClick={handleConfirmCorrection}
+                className="w-full py-3 rounded-xl bg-[#00E5FF] text-black font-mono font-bold text-sm tracking-wider hover:bg-[#00c8e0] transition-colors shadow-[0_0_15px_rgba(0,229,255,0.3)]"
+              >
+                CONFIRM CORRECTION
+              </button>
             </div>
           </div>
         </div>
