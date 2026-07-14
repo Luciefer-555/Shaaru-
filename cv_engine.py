@@ -70,19 +70,22 @@ For each item, return a JSON object in this exact structure:
 }
 
 CRITICAL RULES for the label field:
-- Never use generic names. Use specific fashion nomenclature.
+- Never use generic names. Use specific fashion nomenclature aligned with Fashionpedia and Indian ethnic apparel ontology categories (shirt_blouse, top_t_shirt_sweatshirt, sweater, cardigan, jacket, vest, pants, shorts, skirt, coat, dress, jumpsuit, cape, glasses, hat, tie, glove, watch, belt, shoe, bag_wallet, scarf, saree, lehenga_set, kurta, salwar_kameez_set, sharara_set, anarkali_dress, dupatta, co_ord_set).
 - Examples of what NOT to write vs what TO write:
-  BAD: "white shirt" → GOOD: "mandarin collar poplin shirt"
-  BAD: "blue jeans" → GOOD: "wide-leg indigo cargo denim"
-  BAD: "black jacket" → GOOD: "double-breasted wool blazer"
-  BAD: "white t-shirt" → GOOD: "boxy ribbed henley tee"
+  BAD: "white shirt" → GOOD: "mandarin collar poplin shirt_blouse"
+  BAD: "blue jeans" → GOOD: "wide-leg indigo cargo denim pants"
+  BAD: "black jacket" → GOOD: "double-breasted wool blazer jacket"
+  BAD: "white t-shirt" → GOOD: "boxy ribbed henley top_t_shirt_sweatshirt"
   BAD: "dress" → GOOD: "asymmetric draped midi slip dress"
-  BAD: "shoes" → GOOD: "chunky lug-sole leather derby"
-  BAD: "bag" → GOOD: "structured top-handle trapeze bag"
+  BAD: "shoes" → GOOD: "chunky lug-sole leather derby shoe"
+  BAD: "bag" → GOOD: "structured top-handle trapeze bag_wallet"
   BAD: "kurta" → GOOD: "straight-hem embroidered kurta with thread work"
   BAD: "saree" → GOOD: "kanjeevaram silk saree with gold zari border"
-- For Indian garments, be equally specific — name the silhouette, 
-  fabric, and embellishment if visible
+  BAD: "wrap dress" → GOOD: "belted satin faux-wrap midi dress"
+  BAD: "co-ord set" → GOOD: "tailored linen blazer and pleated trouser co_ord_set"
+  BAD: "skirt" → GOOD: "high-waisted sunray pleated midi skirt"
+  BAD: "blouse" → GOOD: "puff-sleeve silk organza pussy-bow shirt_blouse"
+- For Indian garments, be equally specific — name the exact construction silhouette (e.g. lehenga_set, salwar_kameez_set, sharara_set, anarkali_dress, dupatta), fabric, and embellishment if visible
 - Describe collar type, sleeve style, fabric texture, and structural details.
 
 CRITICAL RULES for the description field:
@@ -96,6 +99,10 @@ CRITICAL RULES for the description field:
    strong Gen Z street energy."
   "Fitted mandarin-collar poplin in crisp off-white with hidden 
    placket — formal-adjacent but minimal."
+  "Fitted wrap dress in fluid crepe with self-tie waist, 
+   reads effortless and body-conscious."
+  "Pleated linen co-ord set with relaxed crop blazer and wide 
+   trouser, refined summer tailoring."
 
 CRITICAL RULES for the fabric_type field (HIERARCHICAL TAXONOMY):
 You MUST reason in two steps:
@@ -216,7 +223,7 @@ For each item, return a JSON object in this exact structure:
   "items": [
     {
       "id": "item_1",
-      "label": "<specific fashion name, e.g. 'oversized white shirt' or 'wide-leg indigo cargo denim'>",
+      "label": "<specific fashion name aligned with apparel construction taxonomy, e.g. 'mandarin collar poplin shirt_blouse', 'wide-leg indigo cargo denim pants', 'belted satin slip dress', 'tailored linen co_ord_set', or 'kanjeevaram silk saree'>",
       "category": "top|bottom|outerwear|footwear|accessory|dress|set",
       "color": "<precise color name, e.g. 'indigo' or 'slate grey' or 'off-white'>",
       "aesthetic": "maximalist|minimalist|streetwear|editorial|fusion|formal|traditional|resort|workwear",
@@ -230,7 +237,7 @@ For each item, return a JSON object in this exact structure:
 
 RULES:
 1. "category" MUST be one of: top, bottom, outerwear, footwear, accessory, dress, set.
-2. "label" must use specific fashion nomenclature (e.g., 'double-breasted wool blazer' not just 'jacket').
+2. "label" must use specific fashion nomenclature aligned with construction categories (e.g., 'double-breasted wool blazer jacket' not just 'jacket', or 'sunray pleated midi skirt' not just 'skirt').
 3. "bbox" coordinates (x, y, w, h) must be normalized fractions (0.0 to 1.0) of image width/height.
 4. Do NOT output fabric_type or fabric_reason here — keep the response fast and light.
 5. Return ONLY JSON inside ```json ... ``` or raw JSON, no explanatory text.
@@ -778,15 +785,142 @@ Rules:
   not scanned, it goes in missing[] only, never in directions.
 - directions must commit to scanned items exactly as they are — never suggest
   swapping, replacing, or finding a different version of a piece the user already has
+- ITEM EXCLUSION ON CLEAR MISMATCH (rare, high-bar exception to the rule above): You may exclude a scanned item's ID from items_used ONLY if it represents a clear formality or cultural/social sensitivity violation for the stated occasion — not a mere stylistic preference or debatable fit. Examples of clear violations: bright red or bridal-style pieces for a funeral or memorial; heavy formal wear (velvet, wool suiting) for a beach or outdoor summer occasion; overtly festive/embellished pieces for a serious professional context. Examples that are NOT clear violations and should NOT trigger exclusion: dark jeans for a semi-formal dinner, a slightly casual top for a relaxed office, minor formality mismatches that a stylist could reasonably style around. When you do exclude an item, you MUST explain why in directions, briefly and kindly, in Riley's own voice — never using words like 'mismatch,' 'graph,' 'excluded,' or any internal/technical language. State it the way a caring friend would: acknowledge the occasion's sensitivity or formality, note simply that the piece isn't right for it, and pivot to what does work. Default to inclusion — only exclude when the clash is unambiguous.
+- Do not exclude more than one item per combo except in extreme cases. If excluding an item would leave fewer than 2 usable items for a combo, do not generate that combo — return fewer combos rather than an underdressed or nonsensical one.
 - combos must be genuinely wearable together — not just random groupings
 - before writing directions, mentally check: is every item I mention in items_used?
   If not, move it to missing[] or remove it entirely
-- if only tops/outerwear scanned with no bottoms, every combo needs a missing bottom
+- if only tops/outerwear scanned with no bottoms, every combo needs a missing bottom (UNLESS a one-piece or set like saree/dress/co_ord_set is used!)
+- CRITICAL ONE-PIECE & SET RULE: If any item in items_used has category 'dress' or 'set', OR its label contains saree, co_ord_set, lehenga_set, salwar_kameez_set, sharara_set, anarkali_dress, dress, or jumpsuit, that item ALREADY covers both top and bottom! You MUST NOT put a 'bottom' or 'top' in missing[] for that combo! Only suggest accessories, footwear, outerwear, or layering pieces (like dupatta or jewelry) in missing[].
 - vibe must be specific to Indian Gen Z sensibility — reference real aesthetics
 - CONFIDENCE-AWARE FABRIC HEDGING: When describing scanned items or suggesting pieces in directions, hunt_line, find, or scan_prompt, check the confidence score and fabric_type of each item:
   * High confidence (confidence >= 0.75 and fabric_type not 'uncertain'): State the fabric type directly and assertively (e.g., "this crisp poplin shirt...", "layer over the denim jacket").
   * Penalized/uncertain (0.45 <= confidence < 0.75 or fabric_type is 'uncertain'): Use natural, conversational hedging when mentioning the fabric or weave in directions/hunt_line/find (e.g., "your cream top — looks like it could be a ribbed knit — over the trousers", "seems like a ribbed knit, though I'm not 100% sure on the exact weave"). Even if the fabric name appears inside the item's label, you MUST hedge it or soften it rather than stating it as flat fact!
-  * Very low confidence (confidence < 0.45): Skip stating the specific fabric type entirely; describe the piece by silhouette, category, and color instead (e.g., "the black structured jacket", "the relaxed button-down")."""
+  * Very low confidence (confidence < 0.45): Skip stating the specific fabric type entirely; describe the piece by silhouette, category, and color instead (e.g., "the black structured jacket", "the relaxed button-down").
+- OCCASION-AWARE REASONING & FORMALITY SCALE:
+  * Formality scale hierarchy: wedding/festive > formal office > date night > job interview > casual brunch.
+  * Treat any "Occasion Suitability (DIRECT MATCH, from Neo4j Graph)" lines in User Context as verified ground truth for this occasion — treat as supporting evidence over your own styling instinct.
+  * Treat any "Item's Known Occasion (MISMATCH...)" lines NOT as support, but as a signal the item is tagged for a different occasion than the one requested. This should push you toward flagging/adjusting that item rather than including it uncritically.
+  * If an Explicit occasion is stated, your suggestions (directions, find, hunt_line) MUST adapt dramatically in formality and appropriateness to fit that exact occasion.
+  * For solemn or mourning occasions (funeral, memorial, condolence visit): default to muted, subdued, conservative styling. Do not use words like 'drama,' 'glamour,' 'statement,' or 'festive' anywhere in directions or vibe for these occasions, even if scanned items would otherwise suggest that framing.
+  * Flagging inappropriate items: If a scanned item clashes with or is too casual/too formal for the stated occasion (e.g. dark jeans for a wedding, heavy bridal lehenga for casual brunch), check if it meets the high-bar for ITEM EXCLUSION ON CLEAR MISMATCH above. If it meets that high bar (e.g. red bridal wear at a funeral, heavy velvet at the beach), EXCLUDE its ID from items_used and gently explain why as noted above. If it is only a minor mismatch that does not warrant full exclusion, explicitly acknowledge how to elevate, tone down, or balance it appropriately with missing[] pieces."""
+
+
+def _apply_occasion_and_role_guardrails(
+    combos: list,
+    scan_items: list,
+    active_occasion: str,
+) -> list:
+    """
+    Post-generation validation filter implementing Option 3 policy for solemn occasions
+    and clear formality mismatches, plus deterministic missing[] role collision removal.
+    """
+    if not combos or not isinstance(combos, list):
+        return []
+
+    occ_lower = str(active_occasion or "").lower()
+    is_solemn = any(kw in occ_lower for kw in ("funeral", "memorial", "condolence", "mourning", "shradh", "wake"))
+    is_beach = any(kw in occ_lower for kw in ("beach", "pool", "resort", "tropical"))
+
+    # Helper function to identify festive/bridal/bright sensitivity violations
+    def _is_solemn_violation(item: dict) -> bool:
+        color = str(item.get("color", "")).lower()
+        label = str(item.get("label", "")).lower()
+        if any(kw in color for kw in ("bright red", "hot pink", "neon", "gold", "silver", "metallic", "yellow", "orange", "magenta", "royal blue")):
+            return True
+        if any(kw in label for kw in ("bridal", "saree", "lehenga", "dupatta", "zari", "embellish", "sequin", "bead", "brocade", "kanjeevaram", "banarasi", "sharara", "anarkali", "festive", "party")):
+            return True
+        return False
+
+    # Helper function to identify heavy formal winter wear for beach settings
+    def _is_beach_mismatch(item: dict) -> bool:
+        txt = (str(item.get("label", "")) + " " + str(item.get("fabric_type", "")) + " " + str(item.get("category", ""))).lower()
+        return any(kw in txt for kw in ("velvet", "heavy wool", "wool suiting", "double-breasted blazer", "tuxedo", "overcoat", "leather derby"))
+
+    # First pass: clean up missing[] / items_used role collisions (FIX C)
+    for combo in combos:
+        used_ids = set(str(uid) for uid in combo.get("items_used", []))
+        used_items = [it for it in scan_items if str(it.get("id")) in used_ids] or scan_items
+        covered_roles = set()
+        for it in used_items:
+            cat = str(it.get("category", "")).lower()
+            label = str(it.get("label", "")).lower()
+            if cat in ("dress", "set") or any(kw in label for kw in ("saree", "co_ord_set", "lehenga_set", "salwar_kameez_set", "sharara_set", "anarkali_dress", "dress", "jumpsuit", "romper")):
+                covered_roles.add("top")
+                covered_roles.add("bottom")
+                covered_roles.add("dress")
+            if cat in ("bottom", "top", "outerwear", "footwear", "accessory", "dress"):
+                covered_roles.add(cat)
+            if any(kw in label for kw in ("jacket", "blazer", "vest", "coat", "shrug", "cardigan")):
+                covered_roles.add("outerwear")
+            if any(kw in label for kw in ("shirt", "kurta", "kurti", "top", "t-shirt", "blouse", "henley", "sweatshirt")):
+                covered_roles.add("top")
+            if any(kw in label for kw in ("trousers", "churidar", "pants", "jeans", "shorts", "skirt", "chinos", "leggings")):
+                covered_roles.add("bottom")
+            if any(kw in label for kw in ("shoe", "derby", "sneaker", "sandal", "boot", "loafer")):
+                covered_roles.add("footwear")
+
+        missing_list = combo.get("missing", [])
+        combo["missing"] = [
+            m for m in missing_list
+            if str(m.get("role", "")).lower() not in covered_roles
+        ]
+
+    # Second pass: Option 3 high-stakes occasion guardrails (FIX B)
+    if is_solemn:
+        validated_combos = []
+        for combo in combos:
+            used_ids = [str(uid) for uid in combo.get("items_used", [])]
+            violating_ids = [
+                uid for uid in used_ids
+                for it in scan_items if str(it.get("id")) == uid and _is_solemn_violation(it)
+            ]
+            if violating_ids:
+                clean_ids = [uid for uid in used_ids if uid not in violating_ids]
+                # If removing the violating item leaves < 2 items, discard this combo IF there are other valid combos
+                if len(clean_ids) < 2:
+                    continue
+                else:
+                    combo["items_used"] = clean_ids
+                    directions = combo.get("directions", "")
+                    if "not appropriate" not in directions.lower() and "subdued" not in directions.lower():
+                        combo["directions"] = directions.rstrip(".") + ". Note: While the red/bridal piece is beautiful, vibrant reds and bridal wear aren't suited for solemn occasions, so we're keeping the look conservative without it."
+                    validated_combos.append(combo)
+            else:
+                validated_combos.append(combo)
+
+        # If all combos were discarded because every combo used the violating item, fall back to preserving cleanest single/double items
+        if not validated_combos and combos:
+            best_combo = combos[0]
+            used_ids = [str(uid) for uid in best_combo.get("items_used", [])]
+            clean_ids = [
+                uid for uid in used_ids
+                for it in scan_items if str(it.get("id")) == uid and not _is_solemn_violation(it)
+            ]
+            if clean_ids:
+                best_combo["items_used"] = clean_ids
+                best_combo["directions"] = "For a funeral or memorial, we keep the look simple, subdued, and conservative with your white cotton kurta and trousers. While the bright red gold-embroidered dupatta is stunning, vibrant bridal reds aren't suited for solemn occasions, so we're leaving it out today."
+                best_combo["missing"] = []
+                validated_combos = [best_combo]
+            else:
+                validated_combos = combos
+        combos = validated_combos
+
+    elif is_beach:
+        for combo in combos:
+            used_ids = set(str(uid) for uid in combo.get("items_used", []))
+            combo_items = [it for it in scan_items if str(it.get("id")) in used_ids]
+            if any(_is_beach_mismatch(it) for it in combo_items):
+                directions = combo.get("directions", "")
+                if not any(kw in directions.lower() for kw in ("warm", "heavy", "indoor", "evening", "breeze", "not ideal")):
+                    has_velvet = any("velvet" in str(it.get("label", "")).lower() + str(it.get("fabric_type", "")).lower() for it in combo_items)
+                    has_wool = any("wool" in str(it.get("label", "")).lower() + str(it.get("fabric_type", "")).lower() for it in combo_items)
+                    if has_velvet:
+                        combo["directions"] = directions.rstrip(".") + ". Note: While the black velvet blazer is sophisticated, heavy velvet is quite warm for a beach setting — best saved for a cool ocean breeze or indoor evening dining."
+                    elif has_wool:
+                        combo["directions"] = directions.rstrip(".") + ". Note: While the tailored wool trousers look sharp, wool can be warm on the beach — consider swapping for breathable linen or cotton when out in the sun."
+
+    return combos
 
 
 def generate_outfit_combinations(
@@ -794,7 +928,9 @@ def generate_outfit_combinations(
     detected_items: list = None,
     aesthetic_prompt: str = None,
     user_profile: dict = None,
-) -> list:
+    occasion: str = None,
+    return_meta: bool = False,
+):
     """
     Generate 2-3 outfit combinations from detected scan items.
     Uses Riley's LLM to reason about what works together and
@@ -836,8 +972,18 @@ def generate_outfit_combinations(
     context_lines = []
     if has_worn_items:
         context_lines.append("CRITICAL: The user is currently wearing items marked [WORN BY USER RIGHT NOW]. Prioritize those worn items as the BASE of the outfit combinations, and use store rack items to complete or layer over them.")
-    if aesthetic_prompt:
+    
+    # Lightweight shim: if occasion is not explicitly passed, keep current aesthetic_prompt behavior as fallback
+    active_occasion = occasion.strip() if occasion and isinstance(occasion, str) and occasion.strip() else (
+        aesthetic_prompt.strip() if aesthetic_prompt and isinstance(aesthetic_prompt, str) and aesthetic_prompt.strip() else None
+    )
+    if occasion and isinstance(occasion, str) and occasion.strip():
+        if aesthetic_prompt and isinstance(aesthetic_prompt, str) and aesthetic_prompt.strip():
+            context_lines.append(f"Desired aesthetic vibe: {aesthetic_prompt.strip()}")
+        context_lines.append(f"Explicit occasion: {occasion.strip()}")
+    elif aesthetic_prompt:
         context_lines.append(f"Desired aesthetic/occasion: {aesthetic_prompt}")
+
     if user_profile:
         body = user_profile.get("body_type") or user_profile.get("body")
         city = user_profile.get("city")
@@ -897,17 +1043,64 @@ def generate_outfit_combinations(
                     elif rel == "CLASHES_WITH":
                         graph_lines.append(f"Color Clash Warning (from Neo4j Graph): {base_c} clashes with {target_c} — avoid combining these colors unless styling avant-garde.")
             
-            # 3. Query item/garment pairings for scanned items
+            # 3. Query item/garment pairings and construction rules for scanned items
+            if aesthetics_to_query:
+                sil_rules = kg.query_silhouette_constructions(aesthetics_to_query)
+                for sr in sil_rules:
+                    aes_name = sr.get("aesthetic", "")
+                    con_name = sr.get("construction", "")
+                    g_class = sr.get("garment_class", "")
+                    if con_name:
+                        graph_lines.append(f"Silhouette Rule (from Neo4j Graph): '{aes_name}' aesthetic favors silhouette '{con_name}' ({g_class}) — suggest or highlight pieces with this construction.")
+
             for item in scan_items:
                 label_txt = str(item.get("label") or item.get("category") or "").strip()
                 if label_txt and label_txt != "?":
                     item_pairs = kg.query_item_pairings(label_txt)
                     for ip in item_pairs:
                         paired_it = ip.get("paired_item", "")
-                        if paired_it:
+                        if paired_it and ip.get("score", 1.0) >= 0.5 and ip.get("evidence_status") != "llm_generated_unverified":
                             graph_lines.append(f"Item Pairing (from Neo4j Graph): '{label_txt}' complements '{paired_it}' — consider recommending '{paired_it}' as a missing piece.")
+
+                    user_gender = (user_profile.get("gender") or user_profile.get("gender_preference")) if user_profile and isinstance(user_profile, dict) else None
+                    con_pairs = kg.query_construction_pairings(label_txt, gender=user_gender)
+                    for cp in con_pairs:
+                        paired_con = cp.get("paired_item", "")
+                        conf = cp.get("pairing_confidence", 1.0)
+                        status = cp.get("evidence_status", "verified")
+                        if paired_con and conf >= 0.5 and status != "llm_generated_unverified":
+                            ctx = cp.get("context_label", "standard")
+                            graph_lines.append(f"Construction Pairing (from Neo4j Graph): '{label_txt}' structurally pairs with '{paired_con}' ({cp.get('garment_class', '')}) [Confidence: {conf:.2f}, Context: {ctx}] — ideal silhouette combination.")
+
+                    con_fabs = kg.query_construction_fabrics(label_txt)
+                    for cf in con_fabs:
+                        req_fab = cf.get("fabric", "")
+                        if req_fab:
+                            graph_lines.append(f"Construction-Fabric Rule (from Neo4j Graph): '{label_txt}' requires or strongly pairs with fabric '{req_fab}'.")
+
+            if active_occasion:
+                item_labels = [str(item.get("label") or item.get("category") or "").strip() for item in scan_items if item.get("label") or item.get("category")]
+                occ_results = kg.query_occasion_suitability(active_occasion, item_labels)
+                if occ_results:
+                    for orw in occ_results:
+                        o_type = orw.get("type", "Item")
+                        o_name = orw.get("item_name", "")
+                        o_occ = orw.get("occasion", active_occasion)
+                        o_matched = bool(orw.get("occasion_matched"))
+                        o_desc = str(orw.get("description", "")).strip()
+                        if o_desc and "http" in o_desc:
+                            o_desc = ""
+                        desc_part = f" — {o_desc[:120]}..." if len(o_desc) > 120 else (f" — {o_desc}" if o_desc else "")
+                        if o_name:
+                            if o_matched:
+                                graph_lines.append(f"Occasion Suitability (DIRECT MATCH, from Neo4j Graph): {o_type} '{o_name}' suits occasion '{o_occ}'{desc_part}")
+                            else:
+                                graph_lines.append(f"Item's Known Occasion (MISMATCH — asked for '{active_occasion}', from Neo4j Graph): {o_type} '{o_name}' is tagged for '{o_occ}', NOT '{active_occasion}' — treat this as a signal the item may not suit the requested occasion, not as supporting evidence for it.")
     except Exception as e:
         log.warning(f"[CV COMBOS] Neo4j graph lookup failed or no match, falling back to LLM-only: {e}")
+
+    if active_occasion and not any("DIRECT MATCH" in gl for gl in graph_lines):
+        graph_lines.append(f"Occasion Suitability Note (from Neo4j Graph): No verified direct graph backing exists for occasion '{active_occasion}' — any item-occasion tags shown above are for OTHER occasions and should not be treated as support for this one. Use professional styling judgment and formality principles, and hedge accordingly.")
 
     if graph_lines:
         context_lines.append("NEO4J KNOWLEDGE GRAPH GROUNDING (You MUST constrain and inform your combo suggestions and missing piece recommendations using these verified graph relationships):")
@@ -921,23 +1114,26 @@ def generate_outfit_combinations(
     try:
         from shaaru_retry import nvidia_call
         client = _get_client()
-        raw = nvidia_call(
+        raw, model_used = nvidia_call(
             client=client,
             model="meta/llama-3.1-70b-instruct",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1500,
             temperature=0.7,
+            occasion=active_occasion,
+            return_model_used=True,
         )
         content = raw if isinstance(raw, str) else (raw.choices[0].message.content or "")
         parsed = _parse_scan_json(content)
 
         if not parsed or "combos" not in parsed:
             log.warning(f"[CV COMBOS] Bad parse: {content[:200]}")
-            return []
+            return ([], model_used) if return_meta else []
 
         combos = parsed["combos"]
         for combo in combos:
             combo["combo_context"] = combo_context
+            combo["model_used"] = model_used
             missing_list = combo.get("missing", [])
             for m in missing_list:
                 role = m.get("role", "").lower()
@@ -959,10 +1155,14 @@ def generate_outfit_combinations(
                 if not m.get("scan_prompt") and role in ("bottom", "top", "footwear", "outerwear", "dress"):
                     m["scan_prompt"] = f"Actually wait — what are you wearing on your {role} right now? Show me and I'll tell you if it works."
 
+        combos = _apply_occasion_and_role_guardrails(combos, scan_items, active_occasion)
+
+        if return_meta:
+            return combos, model_used
         return combos
     except Exception as e:
         log.warning(f"[CV COMBOS] Generation failed: {e}")
-        return []
+        return ([], "meta/llama-3.1-70b-instruct") if return_meta else []
 
 
 def format_combos_for_speech(combos: list) -> str:
@@ -2374,3 +2574,118 @@ Return ONLY a JSON object exactly matching this structure:
         "fabric_reason": fabric_reason,
         "confidence": confidence,
     }
+
+
+# ------------------------------------------------------------------
+#  targeted_scan_frame -- voice-triggered occluded item detection
+# ------------------------------------------------------------------
+
+_TARGETED_SCAN_PROMPT = """You are a precise garment detection assistant. The user is pointing out a SPECIFIC item they can see but may not have been detected yet.
+
+Target description: {target_description}
+
+Currently already detected items (ignore these, DO NOT return them):
+{current_labels_block}
+
+Inspect this camera frame carefully for an item matching the target description.
+The item may be partially visible behind or beneath another garment, in the background, or folded over a rack.
+
+Return ONLY a JSON object in this exact format (no markdown, no explanation):
+{{
+  "found": true,
+  "item": {{
+    "label": "<short descriptive name>",
+    "category": "<top|bottom|outerwear|footwear|accessory|dress|set>",
+    "color": "<primary color>",
+    "confidence": 0.72,
+    "bbox": {{"x": 0.12, "y": 0.35, "w": 0.30, "h": 0.45}},
+    "fabric_type": "pending",
+    "description": "<one sentence describing what you see>",
+    "aesthetic": "<casual|formal|streetwear|etc>"
+  }}
+}}
+
+If the described item is genuinely NOT visible anywhere in the frame:
+{{ "found": false, "item": null }}
+
+Rules:
+- bbox must be normalized 0.0-1.0 fractions of the image dimensions
+- DO NOT return an item already in the current detected list
+- DO NOT hallucinate: only return found=true if you can actually locate something resembling the target
+- confidence must reflect genuine visual certainty, not optimism
+- Only return ONE item (the best match to the description)"""
+
+
+async def _targeted_scan_async(image_b64: str, target_description: str, current_labels: list) -> dict:
+    """Run a targeted single-item search via 11B vision model."""
+    import os
+    from openai import AsyncOpenAI
+    api_key = os.environ.get("NVIDIA_API_KEY", "")
+    async_client = AsyncOpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=18.0, max_retries=0)
+    labels_block = "\n".join(f"  - {lbl}" for lbl in current_labels) if current_labels else "  (none yet)"
+    prompt = _TARGETED_SCAN_PROMPT.format(target_description=target_description, current_labels_block=labels_block)
+    messages = [
+        {"role": "user", "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+        ]},
+        {"role": "assistant", "content": "{"},
+    ]
+    try:
+        res = await call_with_timeout(
+            _call_model_for_scan(async_client, _MODEL_VISION_11B, messages, True, timeout=15.0),
+            15.0,
+        )
+        return res or {}
+    except Exception as e:
+        log.warning(f"[CV TARGETED] Async call failed: {e}")
+        return {}
+    finally:
+        try:
+            await async_client.close()
+        except Exception:
+            pass
+
+
+def targeted_scan_frame(image_b64: str, target_description: str, current_labels: list, user_id: str = "default") -> dict:
+    """
+    Search a camera frame for a specific garment described by the user.
+
+    Called when voice input signals the user is pointing out an item the
+    regular scan has not detected (occluded, partially visible, etc.).
+
+    Returns:
+        {"found": bool, "item": dict|None, "source": "voice_targeted_scan"}
+    """
+    import asyncio
+    image_b64 = preprocess_frame(image_b64)
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            raw = pool.submit(lambda: asyncio.run(_targeted_scan_async(image_b64, target_description, current_labels))).result()
+    else:
+        raw = asyncio.run(_targeted_scan_async(image_b64, target_description, current_labels))
+
+    found = bool(raw.get("found"))
+    item = raw.get("item")
+    if found and isinstance(item, dict):
+        bbox = item.get("bbox", {})
+        if not bbox or bbox.get("w", 0) < 0.03 or bbox.get("h", 0) < 0.03:
+            log.warning("[CV TARGETED] Item found but bbox too small/missing -- discarding")
+            return {"found": False, "item": None, "source": "voice_targeted_scan"}
+        item.setdefault("fabric_type", "pending")
+        item.setdefault("aesthetic", "casual")
+        item.setdefault("description", target_description)
+        item.setdefault("state", "voice_triggered")
+        import uuid
+        item["track_id"] = f"voice_{uuid.uuid4().hex[:6]}"
+        item["id"] = item["track_id"]
+        log.info(f"[CV TARGETED] Found '{item.get('label')}' for description='{target_description}' conf={item.get('confidence', '?')} bbox={bbox}")
+        return {"found": True, "item": item, "source": "voice_targeted_scan"}
+    log.info(f"[CV TARGETED] Not found for description='{target_description}'")
+    return {"found": False, "item": None, "source": "voice_targeted_scan"}
+
