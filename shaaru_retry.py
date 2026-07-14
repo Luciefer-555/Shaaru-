@@ -20,21 +20,44 @@ MAX_TOTAL_SECONDS = 150
 BASE_DELAY = 1.0  # seconds
 
 
+def _log_fallback_event(initial_model: str, served_model: str, reason: str, occasion: Optional[str] = None):
+    try:
+        import os, json, datetime
+        log_dir = os.path.join(os.path.dirname(__file__), "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, "model_fallback.jsonl")
+        entry = {
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "occasion": occasion or "",
+            "attempted_model": initial_model,
+            "failed_reason": reason,
+            "served_model": served_model,
+        }
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception as log_err:
+        log.warning(f"[RETRY] Failed to write structured fallback log: {log_err}")
+
+
 def nvidia_call(
     client,
     model: str,
     messages: list[dict],
     max_tokens: int = 1024,
     temperature: float = 0.7,
+    occasion: Optional[str] = None,
+    return_model_used: bool = False,
     **kwargs,
-) -> str:
+):
     import concurrent.futures
 
     HARD_KILL_SECONDS = 120  # absolute wall-clock ceiling, no exceptions
 
     start_time = time.time()
     last_error = None
+    initial_model = model
     current_model = model
+    fallback_reason = None
 
     for attempt in range(MAX_RETRIES + 1):
         elapsed = time.time() - start_time
@@ -79,6 +102,15 @@ def nvidia_call(
             content = resp.choices[0].message.content
             if attempt > 0:
                 log.info(f"[RETRY] Succeeded on attempt {attempt + 1} for {_model}")
+            if current_model != initial_model:
+                _log_fallback_event(
+                    initial_model=initial_model,
+                    served_model=current_model,
+                    reason=fallback_reason or str(last_error or "timeout/error"),
+                    occasion=occasion
+                )
+            if return_model_used:
+                return (content or "", current_model)
             return content or ""
 
         except Exception as e:
@@ -95,9 +127,13 @@ def nvidia_call(
 
             # fallback chain — vision AND text models both covered now
             if current_model == "meta/llama-3.2-90b-vision-instruct":
+                if current_model == initial_model:
+                    fallback_reason = str(e)
                 log.warning(f"[FALLBACK] 90b-vision → 11b-vision: {e}")
                 current_model = "meta/llama-3.2-11b-vision-instruct"
             elif current_model == "meta/llama-3.1-70b-instruct":
+                if current_model == initial_model:
+                    fallback_reason = str(e)
                 log.warning(f"[FALLBACK] 70b → 8b: {e}")
                 current_model = "meta/llama-3.1-8b-instruct"
 
@@ -128,6 +164,8 @@ def nvidia_call_raw(
     messages: list[dict],
     max_tokens: int = 1024,
     temperature: float = 0.7,
+    occasion: Optional[str] = None,
+    return_model_used: bool = False,
     **kwargs,
 ):
     """
@@ -142,7 +180,9 @@ def nvidia_call_raw(
     HARD_KILL_SECONDS = 120
     start_time = time.time()
     last_error = None
+    initial_model = model
     current_model = model
+    fallback_reason = None
 
     for attempt in range(MAX_RETRIES + 1):
         elapsed = time.time() - start_time
@@ -186,6 +226,15 @@ def nvidia_call_raw(
             message = resp.choices[0].message
             if attempt > 0:
                 log.info(f"[RETRY-RAW] Succeeded on attempt {attempt + 1} for {_model}")
+            if current_model != initial_model:
+                _log_fallback_event(
+                    initial_model=initial_model,
+                    served_model=current_model,
+                    reason=fallback_reason or str(last_error or "timeout/error"),
+                    occasion=occasion
+                )
+            if return_model_used:
+                return (message, current_model)
             return message
 
         except Exception as e:
@@ -200,9 +249,13 @@ def nvidia_call_raw(
                 raise
 
             if current_model == "meta/llama-3.2-90b-vision-instruct":
+                if current_model == initial_model:
+                    fallback_reason = str(e)
                 log.warning(f"[FALLBACK-RAW] 90b-vision → 11b-vision: {e}")
                 current_model = "meta/llama-3.2-11b-vision-instruct"
             elif current_model == "meta/llama-3.1-70b-instruct":
+                if current_model == initial_model:
+                    fallback_reason = str(e)
                 log.warning(f"[FALLBACK-RAW] 70b → 8b: {e}")
                 current_model = "meta/llama-3.1-8b-instruct"
 
