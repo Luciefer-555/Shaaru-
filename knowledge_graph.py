@@ -128,7 +128,7 @@ class KnowledgeGraph:
         """Find pairing suggestions between Construction nodes with confidence ranking and gender filtering."""
         cypher = """
         MATCH (c1:Construction)-[r:PAIRS_WITH]-(c2:Construction)
-        WHERE (toLower(c1.name) CONTAINS toLower($name) OR toLower($name) CONTAINS toLower(c1.name))
+        WHERE (toLower(c1.name) CONTAINS toLower($name) OR toLower($name) CONTAINS toLower(c1.name) OR toLower(coalesce(c1.garment_class, '')) CONTAINS toLower($name) OR toLower(coalesce(c1.silhouette, '')) CONTAINS toLower($name))
           AND (r.pairing_confidence IS NULL OR r.pairing_confidence >= 0.5)
           AND (r.evidence_status IS NULL OR r.evidence_status <> 'llm_generated_unverified')
           AND ($gender IS NULL OR c2.gender_association IS NULL OR c2.gender_association = 'unisex' OR c2.gender_association = $gender)
@@ -141,8 +141,9 @@ class KnowledgeGraph:
     def query_construction_fabrics(self, construction_name: str) -> list:
         """Find required or recommended fabrics for a Construction node."""
         cypher = """
-        MATCH (c:Construction)-[:REQUIRES_FABRIC]->(f:Fabric)
-        WHERE toLower(c.name) CONTAINS toLower($name) OR toLower($name) CONTAINS toLower(c.name)
+        MATCH (c:Construction)-[r:REQUIRES_FABRIC]->(f:Fabric)
+        WHERE (toLower(c.name) CONTAINS toLower($name) OR toLower($name) CONTAINS toLower(c.name) OR toLower(coalesce(c.garment_class, '')) CONTAINS toLower($name) OR toLower(coalesce(c.silhouette, '')) CONTAINS toLower($name))
+          AND (r.evidence_status IS NULL OR r.evidence_status <> 'llm_generated_unverified')
         RETURN c.name AS construction, f.name AS fabric
         LIMIT 10
         """
@@ -153,8 +154,9 @@ class KnowledgeGraph:
         if not self.is_connected or not aesthetics:
             return []
         cypher = """
-        MATCH (a:Aesthetic)-[:SUITS_SILHOUETTE]->(c:Construction)
-        WHERE a.name IN $aesthetics
+        MATCH (a:Aesthetic)-[r:SUITS_SILHOUETTE]->(c:Construction)
+        WHERE any(aes IN $aesthetics WHERE toLower(a.name) = toLower(aes) OR toLower(a.name) CONTAINS toLower(aes) OR toLower(aes) CONTAINS toLower(a.name))
+          AND (r.evidence_status IS NULL OR r.evidence_status <> 'llm_generated_unverified')
         RETURN a.name AS aesthetic, c.name AS construction, c.garment_class AS garment_class
         LIMIT 15
         """
@@ -243,7 +245,8 @@ class KnowledgeGraph:
             return []
         cypher = """
         MATCH (c:Color)-[r:COMPLEMENTS|CLASHES_WITH]->(x:Color)
-        WHERE toLower(c.name) IN $colors
+        WHERE any(col IN $colors WHERE toLower(c.name) = col OR toLower(c.name) CONTAINS col OR col CONTAINS toLower(c.name) OR (col CONTAINS 'blue' AND toLower(c.name) CONTAINS 'blue') OR (col CONTAINS 'green' AND toLower(c.name) CONTAINS 'olive') OR (col CONTAINS 'white' AND toLower(c.name) IN ['white', 'cream']) OR (col CONTAINS 'ivory' AND toLower(c.name) IN ['white', 'cream']) OR (col CONTAINS 'ecru' AND toLower(c.name) IN ['beige', 'cream']) OR (col CONTAINS 'beige' AND toLower(c.name) IN ['beige', 'cream']) OR (col CONTAINS 'maroon' AND toLower(c.name) IN ['burgundy', 'red']) OR ((col CONTAINS 'yellow' OR col CONTAINS 'haldi') AND toLower(c.name) IN ['mustard', 'gold']) OR (col CONTAINS 'indigo' AND toLower(c.name) IN ['navy', 'denim blue']) OR (col CONTAINS 'teal' AND toLower(c.name) IN ['emerald', 'navy']) OR (col CONTAINS 'sage' AND toLower(c.name) IN ['olive', 'cream']) OR (col CONTAINS 'terracotta' AND toLower(c.name) IN ['rust', 'brown']) OR (col CONTAINS 'rose' AND toLower(c.name) IN ['pink', 'cream']) OR (col CONTAINS 'champagne' AND toLower(c.name) IN ['gold', 'cream']))
+          AND (r.evidence_status IS NULL OR r.evidence_status <> 'llm_generated_unverified')
         RETURN c.name AS base_color, type(r) AS rel_type, x.name AS target_color
         LIMIT 15
         """
@@ -254,8 +257,9 @@ class KnowledgeGraph:
         if not self.is_connected or not aesthetics:
             return []
         cypher = """
-        MATCH (a:Aesthetic)-[:REQUIRES_FABRIC]->(f:Fabric)
-        WHERE a.name IN $aesthetics
+        MATCH (a:Aesthetic)-[r:REQUIRES_FABRIC]->(f:Fabric)
+        WHERE any(aes IN $aesthetics WHERE toLower(a.name) = toLower(aes) OR toLower(a.name) CONTAINS toLower(aes) OR toLower(aes) CONTAINS toLower(a.name))
+          AND (r.evidence_status IS NULL OR r.evidence_status <> 'llm_generated_unverified')
         RETURN a.name AS aesthetic, f.name AS fabric
         LIMIT 15
         """
@@ -496,6 +500,10 @@ class KnowledgeGraph:
         image_url   = images[0] if (isinstance(images, list) and images and isinstance(images[0], str)) else doc.get("image_url", "")
         cap_obj     = doc.get("caption", {})
         caption     = cap_obj.get("text", "") if isinstance(cap_obj, dict) else str(cap_obj or doc.get("raw_description", "") or "")
+        category    = str(doc.get("category", "") or "")
+        color       = str(doc.get("color", "") or "")
+        fabric      = str(doc.get("fabric", "") or "")
+        silhouette  = str(doc.get("silhouette", "") or "")
 
         # 1. Upsert Product node
         tx.run("""
@@ -506,9 +514,14 @@ class KnowledgeGraph:
                 p.price      = $price,
                 p.image_url  = $image_url,
                 p.caption    = $caption,
+                p.category   = $category,
+                p.color      = $color,
+                p.fabric     = $fabric,
+                p.silhouette = $silhouette,
                 p.synced_at  = datetime()
         """, source_id=source_id, title=title, designer=designer,
-             source_url=source_url, price=price, image_url=image_url, caption=caption)
+             source_url=source_url, price=price, image_url=image_url, caption=caption,
+             category=category, color=color, fabric=fabric, silhouette=silhouette)
 
         # 2. Product → Aesthetic
         if aesthetic and isinstance(aesthetic, str):
@@ -569,6 +582,8 @@ class KnowledgeGraph:
         fabrics_list = raw_fab.get("confirmed", []) if isinstance(raw_fab, dict) else (raw_fab if isinstance(raw_fab, list) else [])
         if not fabrics_list:
             fabrics_list = [f.get("fabric_id_guess") for f in doc.get("fabrics", []) if isinstance(f, dict) and f.get("fabric_id_guess")]
+        if not fabrics_list and fabric:
+            fabrics_list = [fabric]
 
         cleaned_fabrics = []
         for item in fabrics_list:
@@ -585,6 +600,24 @@ class KnowledgeGraph:
                 MATCH (p:Product {source_id: $source_id})
                 MERGE (p)-[:HAS_FABRIC]->(f)
             """, fab=fab, source_id=source_id)
+
+        # 8. Product → Color node
+        if color and isinstance(color, str) and color.strip():
+            tx.run("""
+                MERGE (c:Color {name: toLower($color)})
+                WITH c
+                MATCH (p:Product {source_id: $source_id})
+                MERGE (p)-[:HAS_COLOR]->(c)
+            """, color=color.strip(), source_id=source_id)
+
+        # 9. Product → Silhouette node
+        if silhouette and isinstance(silhouette, str) and silhouette.strip():
+            tx.run("""
+                MERGE (s:Silhouette {name: toLower($silhouette)})
+                WITH s
+                MATCH (p:Product {source_id: $source_id})
+                MERGE (p)-[:HAS_SILHOUETTE]->(s)
+            """, silhouette=silhouette.strip(), source_id=source_id)
 
     def close(self):
         """Close the Neo4j driver connection."""

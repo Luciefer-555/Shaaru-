@@ -1028,7 +1028,7 @@ def generate_outfit_combinations(
                     aes = f_req.get("aesthetic", "")
                     fab = f_req.get("fabric", "")
                     if aes and fab:
-                        graph_lines.append(f"Fabric Association (from Neo4j Graph): '{aes}' aesthetic strongly favors '{fab}' — prioritize or suggest this fabric when recommending missing pieces.")
+                        graph_lines.append(f"Fabric Association (DIRECT MATCH, from Neo4j Graph): '{aes}' aesthetic strongly favors '{fab}' — prioritize or suggest this fabric when recommending missing pieces.")
 
             # 2. Gather colors and query color pairings
             colors_to_query = [str(item.get("color", "")).strip() for item in scan_items if item.get("color") and str(item.get("color", "")).strip() not in ("?", "unspecified", "none", "")]
@@ -1039,9 +1039,11 @@ def generate_outfit_combinations(
                     rel = cr.get("rel_type", "")
                     target_c = cr.get("target_color", "")
                     if rel == "COMPLEMENTS":
-                        graph_lines.append(f"Color Harmony (from Neo4j Graph): {base_c} complements {target_c} — great color match for layering or accessories.")
+                        graph_lines.append(f"Color Harmony (DIRECT MATCH, from Neo4j Graph): {base_c} complements {target_c} — great color match for layering or accessories.")
                     elif rel == "CLASHES_WITH":
                         graph_lines.append(f"Color Clash Warning (from Neo4j Graph): {base_c} clashes with {target_c} — avoid combining these colors unless styling avant-garde.")
+            if colors_to_query and not any("Color Harmony (DIRECT MATCH" in gl for gl in graph_lines):
+                graph_lines.append(f"Color Grounding Note (from Neo4j Graph): No verified direct color harmony graph backing exists for color(s) {', '.join(colors_to_query)}. When recommending color combinations, acknowledge that pairings are suggested based on general color theory rather than verified database harmony rules.")
             
             # 3. Query item/garment pairings and construction rules for scanned items
             if aesthetics_to_query:
@@ -1051,7 +1053,9 @@ def generate_outfit_combinations(
                     con_name = sr.get("construction", "")
                     g_class = sr.get("garment_class", "")
                     if con_name:
-                        graph_lines.append(f"Silhouette Rule (from Neo4j Graph): '{aes_name}' aesthetic favors silhouette '{con_name}' ({g_class}) — suggest or highlight pieces with this construction.")
+                        graph_lines.append(f"Silhouette Rule (DIRECT MATCH, from Neo4j Graph): '{aes_name}' aesthetic favors silhouette '{con_name}' ({g_class}) — suggest or highlight pieces with this construction.")
+            if aesthetics_to_query and not any("Silhouette Rule (DIRECT MATCH" in gl for gl in graph_lines):
+                graph_lines.append(f"Silhouette Grounding Note (from Neo4j Graph): No verified direct silhouette/construction graph backing exists for aesthetic(s) {', '.join(aesthetics_to_query)}. When proposing silhouettes, indicate that styling choices are based on general fashion aesthetics rather than verified database rules.")
 
             for item in scan_items:
                 label_txt = str(item.get("label") or item.get("category") or "").strip()
@@ -1070,13 +1074,18 @@ def generate_outfit_combinations(
                         status = cp.get("evidence_status", "verified")
                         if paired_con and conf >= 0.5 and status != "llm_generated_unverified":
                             ctx = cp.get("context_label", "standard")
-                            graph_lines.append(f"Construction Pairing (from Neo4j Graph): '{label_txt}' structurally pairs with '{paired_con}' ({cp.get('garment_class', '')}) [Confidence: {conf:.2f}, Context: {ctx}] — ideal silhouette combination.")
+                            graph_lines.append(f"Construction Pairing (DIRECT MATCH, from Neo4j Graph): '{label_txt}' structurally pairs with '{paired_con}' ({cp.get('garment_class', '')}) [Confidence: {conf:.2f}, Context: {ctx}] — ideal silhouette combination.")
 
                     con_fabs = kg.query_construction_fabrics(label_txt)
                     for cf in con_fabs:
                         req_fab = cf.get("fabric", "")
                         if req_fab:
-                            graph_lines.append(f"Construction-Fabric Rule (from Neo4j Graph): '{label_txt}' requires or strongly pairs with fabric '{req_fab}'.")
+                            graph_lines.append(f"Construction-Fabric Rule (DIRECT MATCH, from Neo4j Graph): '{label_txt}' requires or strongly pairs with fabric '{req_fab}'.")
+
+            if scan_items and not any("Construction Pairing (DIRECT MATCH" in gl for gl in graph_lines):
+                graph_lines.append("Construction Pairing Note (from Neo4j Graph): No verified direct structural pairing graph backing exists for the scanned items. When suggesting complementary garments or silhouettes, signal that recommendations are general styling advice rather than verified database pairing rules.")
+            if scan_items and not any("Fabric" in gl and "DIRECT MATCH" in gl for gl in graph_lines):
+                graph_lines.append("Fabric Grounding Note (from Neo4j Graph): No verified direct fabric requirement or association graph backing exists for the scanned items/aesthetics. When recommending fabrics, clearly signal that you are inferring suitable fabrics based on general styling principles rather than verified database references.")
 
             if active_occasion:
                 item_labels = [str(item.get("label") or item.get("category") or "").strip() for item in scan_items if item.get("label") or item.get("category")]
@@ -1099,11 +1108,11 @@ def generate_outfit_combinations(
     except Exception as e:
         log.warning(f"[CV COMBOS] Neo4j graph lookup failed or no match, falling back to LLM-only: {e}")
 
-    if active_occasion and not any("DIRECT MATCH" in gl for gl in graph_lines):
+    if active_occasion and not any("Occasion Suitability (DIRECT MATCH" in gl for gl in graph_lines):
         graph_lines.append(f"Occasion Suitability Note (from Neo4j Graph): No verified direct graph backing exists for occasion '{active_occasion}' — any item-occasion tags shown above are for OTHER occasions and should not be treated as support for this one. Use professional styling judgment and formality principles, and hedge accordingly.")
 
     if graph_lines:
-        context_lines.append("NEO4J KNOWLEDGE GRAPH GROUNDING (You MUST constrain and inform your combo suggestions and missing piece recommendations using these verified graph relationships):")
+        context_lines.append("NEO4J KNOWLEDGE GRAPH GROUNDING (You MUST constrain and inform your combo suggestions and missing piece recommendations using these verified graph relationships and grounding notes):")
         for gl in graph_lines:
             context_lines.append(f"  * {gl}")
 

@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 from datetime import datetime, timezone
 from tavily import TavilyClient
 from shaaru_brain import nvidia_call, _get_client, MODEL_TEXT
@@ -37,44 +38,119 @@ def extract_json_from_response(text: str) -> dict:
             pass
     return {}
 
+class QuotaExceededError(Exception):
+    """Raised when Tavily search quota is exhausted or returns 0 sources during quota throttling."""
+    pass
+
+def check_content_specificity(candidate: dict, sources: list[str], source_contents: list[str] = None) -> bool:
+    """Enforce that at least 2 returned sources explicitly contain the target keywords or close synonyms."""
+    if not sources or len(sources) < 2:
+        return False
+    item_id = str(candidate.get('garment_id') or candidate.get('fabric_id') or candidate.get('item_name') or '').lower()
+    keywords = set()
+    if item_id:
+        keywords.add(item_id.replace('_', ' '))
+        keywords.add(item_id.replace('_', ''))
+        for part in item_id.split('_'):
+            if len(part) > 2 and part not in ('set', 'wear', 'style', 'dress', 'shirt', 'pants', 'jacket', 'skirt', 'boots', 'shoes'):
+                keywords.add(part)
+    for cn in candidate.get('common_names', []):
+        if isinstance(cn, str) and cn.strip():
+            keywords.add(cn.lower().strip())
+            for w in cn.split():
+                if len(w) > 2:
+                    keywords.add(w.lower())
+    matching_sources_count = 0
+    for idx, url in enumerate(sources):
+        content = source_contents[idx] if (source_contents and idx < len(source_contents)) else ""
+        text_to_check = (str(url) + " " + str(content)).lower()
+        if any(kw in text_to_check for kw in keywords if len(kw) > 2):
+            matching_sources_count += 1
+    return matching_sources_count >= 2
+
+
+_tavily_quota_exceeded = False
+
 def _run_queries_and_get_sources(queries, max_sources=4):
+    global _tavily_quota_exceeded
+    if _tavily_quota_exceeded:
+        return [], []
     sources = []
     source_contents = []
     seen_urls = set()
     for q in queries:
         if len(sources) >= max_sources:
             break
-        try:
-            print(f"Querying Tavily: {q}")
-            result = client.search(q, max_results=2)
-            print(f"Tavily returned {len(result.get('results', []))} results")
-            for r in result.get('results', []):
-                url = r.get('url')
-                if not url or url in seen_urls:
-                    continue
-                seen_urls.add(url)
-                sources.append(url)
-                source_contents.append(r.get('content', ''))
-                if len(sources) >= max_sources:
+        retries = 3
+        while retries > 0:
+            try:
+                print(f"Querying Tavily: {q}")
+                result = client.search(q, max_results=2)
+                print(f"Tavily returned {len(result.get('results', []))} results")
+                for r in result.get('results', []):
+                    url = r.get('url')
+                    if not url or url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    sources.append(url)
+                    source_contents.append(r.get('content', ''))
+                    if len(sources) >= max_sources:
+                        break
+                time.sleep(1.0) # Pace requests between queries
+                break
+            except Exception as e:
+                err_str = str(e)
+                print(f"Error querying Tavily for '{q}': {err_str}")
+                if "exceeds your plan" in err_str.lower() or "usage limit" in err_str.lower() or "quota" in err_str.lower():
+                    print("[TAVILY QUOTA] Plan limit exceeded. Fast-failing remaining queries for this run.")
+                    _tavily_quota_exceeded = True
+                    return sources, source_contents
+                elif "blocked" in err_str.lower() or "excessive" in err_str.lower() or "rate" in err_str.lower() or "429" in err_str:
+                    retries -= 1
+                    if retries > 0:
+                        print(f"[RATE LIMIT] Waiting 15s before retry ({retries} left)...")
+                        time.sleep(15.0)
+                    else:
+                        break
+                else:
                     break
-        except Exception as e:
-            print(f"Error querying Tavily for '{q}': {e}")
     return sources, source_contents
 
 def verify_fabric_record(candidate: dict) -> dict | None:
+    candidate = {k: (str(v) if not isinstance(v, (dict, list, str, int, float, bool, type(None))) else v) for k, v in candidate.items() if k != '_id'}
     fabric_id = candidate.get('fabric_id', 'unknown')
     sources, source_contents = _run_queries_and_get_sources(fabric_queries(candidate))
     
     if not sources:
-        print(f"[REJECT] {fabric_id} - no sources found")
-        return None
+        if _tavily_quota_exceeded:
+            raise QuotaExceededError(f"Tavily quota exceeded (0 sources) for '{fabric_id}'. Aborting.")
+        print(f"[WARN] {fabric_id} - no web sources found. Using expert LLM domain verification...")
+        prompt = f"""You are verifying a fabric specification record for a fashion AI system using expert textile engineering knowledge.
 
-    s1_content = source_contents[0] if len(source_contents) > 0 else ""
-    s1_url = sources[0] if len(sources) > 0 else ""
-    s2_content = source_contents[1] if len(source_contents) > 1 else ""
-    s2_url = sources[1] if len(sources) > 1 else ""
+Candidate record:
+{json.dumps(candidate, indent=2)}
 
-    prompt = f"""You are verifying a fabric specification record for a fashion AI system.
+Evaluate whether the specifications are technically sound, logical, and accurate according to textile science:
+1. GSM range and weight classification: {candidate.get('gsm_range')}
+2. Drape behavior and score: {candidate.get('drape_score')} out of 10
+3. Fiber composition: {candidate.get('fiber_composition')}
+4. Best use cases: {candidate.get('best_for')}
+
+Return ONLY valid JSON:
+{{
+  "agreement_score": 0.0,
+  "verified_fields": ["field1", "field2"],
+  "conflicting_fields": [],
+  "conflicts_detail": "",
+  "verified": true
+}}"""
+    else:
+        s1_content = source_contents[0] if len(source_contents) > 0 else ""
+        s1_url = sources[0] if len(sources) > 0 else ""
+        s2_content = source_contents[1] if len(source_contents) > 1 else ""
+        s2_url = sources[1] if len(sources) > 1 else ""
+
+        prompt = f"""You are verifying a fabric specification record for a fashion AI system.
 
 Candidate record:
 {json.dumps(candidate, indent=2)}
@@ -91,8 +167,8 @@ Evaluate whether the sources support these specific claims:
 3. Fiber composition: {candidate.get('fiber_composition')}
 4. Best use cases: {candidate.get('best_for')}
 
-Note: Sources may only partially confirm claims. 
-If a source does not contradict a claim, treat it as supporting.
+CRITICAL INSTRUCTION: You must strictly evaluate source content relevance.
+If a source does not explicitly discuss or confirm the specific GSM range, drape, fiber composition, or technical attributes of THIS EXACT fabric target, score it as 0 (irrelevant / tangential domain match). Do NOT treat non-contradictory generic articles as supporting. Silence is not support.
 
 Return ONLY valid JSON:
 {{
@@ -114,6 +190,11 @@ Return ONLY valid JSON:
         
         agreement_score = data.get('agreement_score', 0.0)
         verified = data.get('verified', False)
+
+        if agreement_score >= 0.60 and not check_content_specificity(candidate, sources, source_contents):
+            print(f"[SPECIFICITY CAP] {fabric_id} - <2 sources contain target keywords. Capping agreement score at 0.45.")
+            agreement_score = min(agreement_score, 0.45)
+            verified = False
 
         if agreement_score >= 0.60:
             candidate['verified'] = True
@@ -139,19 +220,40 @@ Return ONLY valid JSON:
 
 
 def verify_construction_record(candidate: dict) -> dict | None:
+    candidate = {k: (str(v) if not isinstance(v, (dict, list, str, int, float, bool, type(None))) else v) for k, v in candidate.items() if k != '_id'}
     garment_id = candidate.get('garment_id', 'unknown')
     sources, source_contents = _run_queries_and_get_sources(construction_queries(candidate))
 
     if not sources:
-        print(f"[REJECT] {garment_id} - no sources found")
-        return None
+        if _tavily_quota_exceeded:
+            raise QuotaExceededError(f"Tavily quota exceeded (0 sources) for '{garment_id}'. Aborting.")
+        print(f"[WARN] {garment_id} - no web sources found. Using expert LLM domain verification...")
+        prompt = f"""You are verifying a garment construction record for a fashion AI system using expert tailoring, pattern engineering, and apparel manufacturing knowledge.
 
-    s1_content = source_contents[0] if len(source_contents) > 0 else ""
-    s1_url = sources[0] if len(sources) > 0 else ""
-    s2_content = source_contents[1] if len(source_contents) > 1 else ""
-    s2_url = sources[1] if len(sources) > 1 else ""
+Candidate record:
+{json.dumps(candidate, indent=2)}
 
-    prompt = f"""You are verifying a garment construction record for a fashion AI system.
+Evaluate whether the specifications are technically sound, industry-standard, and logical:
+- Construction sequence logical order: {candidate.get('construction_sequence')}
+- Seam allowances within industry standard: {candidate.get('seam_allowances')}
+- Ease values reasonable for fit type: {candidate.get('ease_by_fit')}
+- Critical points technically accurate: {candidate.get('critical_points')}
+
+Return ONLY valid JSON:
+{{
+  "agreement_score": 0.0,
+  "verified_fields": ["field1", "field2"],
+  "conflicting_fields": [],
+  "conflicts_detail": "",
+  "verified": true
+}}"""
+    else:
+        s1_content = source_contents[0] if len(source_contents) > 0 else ""
+        s1_url = sources[0] if len(sources) > 0 else ""
+        s2_content = source_contents[1] if len(source_contents) > 1 else ""
+        s2_url = sources[1] if len(sources) > 1 else ""
+
+        prompt = f"""You are verifying a garment construction record for a fashion AI system.
 
 Candidate record:
 {json.dumps(candidate, indent=2)}
@@ -168,8 +270,8 @@ Evaluate whether the sources support these claims:
 - Ease values reasonable for fit type: {candidate.get('ease_by_fit')}
 - Critical points technically accurate: {candidate.get('critical_points')}
 
-Note: Sources may only partially confirm claims. 
-If a source does not contradict a claim, treat it as supporting.
+CRITICAL INSTRUCTION: You must strictly evaluate source content relevance.
+If a source does not explicitly discuss or confirm the specific construction sequence, seam allowance, ease values, or technical attributes of THIS EXACT garment silhouette, score it as 0 (irrelevant / tangential domain match). Do NOT treat non-contradictory generic articles as supporting. Silence is not support.
 
 Return ONLY valid JSON:
 {{
@@ -191,6 +293,11 @@ Return ONLY valid JSON:
 
         agreement_score = data.get('agreement_score', 0.0)
         verified = data.get('verified', False)
+
+        if agreement_score >= 0.60 and not check_content_specificity(candidate, sources, source_contents):
+            print(f"[SPECIFICITY CAP] {garment_id} - <2 sources contain target keywords. Capping agreement score at 0.45.")
+            agreement_score = min(agreement_score, 0.45)
+            verified = False
 
         if agreement_score >= 0.60:
             candidate['verified'] = True
@@ -219,6 +326,8 @@ def verify_sourcing_record(candidate: dict, city: str) -> dict | None:
     sources, source_contents = _run_queries_and_get_sources(sourcing_queries(candidate, city))
 
     if not sources:
+        if _tavily_quota_exceeded:
+            raise QuotaExceededError(f"Tavily quota exceeded (0 sources) for sourcing '{fabric_id}'. Aborting.")
         print(f"[REJECT] {fabric_id} - no sources found")
         return None
 
@@ -244,8 +353,8 @@ Evaluate:
 - Price range is realistic for Indian wholesale market: {candidate.get('price_inr_per_meter')}
 - Fabric type available in that market
 
-Note: Sources may only partially confirm claims. 
-If a source does not contradict a claim, treat it as supporting.
+CRITICAL INSTRUCTION: You must strictly evaluate source content relevance.
+If a source does not explicitly confirm the market and price for THIS EXACT fabric target, score 0. Do NOT treat non-contradictory generic articles as supporting.
 
 Return ONLY valid JSON:
 {{
@@ -265,6 +374,11 @@ Return ONLY valid JSON:
 
         agreement_score = data.get('agreement_score', 0.0)
         verified = data.get('verified', False)
+
+        if agreement_score >= 0.60 and not check_content_specificity(candidate, sources, source_contents):
+            print(f"[SPECIFICITY CAP] {fabric_id} - <2 sources contain target keywords. Capping agreement score at 0.45.")
+            agreement_score = min(agreement_score, 0.45)
+            verified = False
 
         if agreement_score >= 0.60:
             candidate['verified'] = True
@@ -293,6 +407,8 @@ def verify_measurement_table(candidate: dict) -> dict | None:
     sources, source_contents = _run_queries_and_get_sources(measurement_queries(candidate))
 
     if not sources:
+        if _tavily_quota_exceeded:
+            raise QuotaExceededError(f"Tavily quota exceeded (0 sources) for measurement '{garment}'. Aborting.")
         print(f"[REJECT] {garment} - no sources found")
         return None
 
@@ -316,8 +432,8 @@ Evaluate proportional accuracy of measurements against sources.
 For a 6ft frame, inseam should be ~84-88cm, outseam ~112-116cm.
 Flag any measurement more than 15% outside source-confirmed ranges.
 
-Note: Sources may only partially confirm claims. 
-If a source does not contradict a claim, treat it as supporting.
+CRITICAL INSTRUCTION: You must strictly evaluate source content relevance.
+If a source does not explicitly discuss or confirm measurements for THIS EXACT garment target, score 0. Do NOT treat non-contradictory generic articles as supporting.
 
 Return ONLY valid JSON:
 {{
@@ -337,6 +453,11 @@ Return ONLY valid JSON:
 
         agreement_score = data.get('agreement_score', 0.0)
         verified = data.get('verified', False)
+
+        if agreement_score >= 0.60 and not check_content_specificity(candidate, sources, source_contents):
+            print(f"[SPECIFICITY CAP] {garment} - <2 sources contain target keywords. Capping agreement score at 0.45.")
+            agreement_score = min(agreement_score, 0.45)
+            verified = False
 
         if agreement_score >= 0.60:
             candidate['verified'] = True
