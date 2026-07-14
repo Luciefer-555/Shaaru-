@@ -13,7 +13,7 @@ from typing import Optional
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
-from cv_engine import scan_frame, analyze_item, generate_outfit_combinations
+from cv_engine import scan_frame, analyze_item, generate_outfit_combinations, targeted_scan_frame
 
 import time
 
@@ -41,6 +41,7 @@ class StyleCombosRequest(BaseModel):
     user_id: str
     enable_tts: Optional[bool] = False
     aesthetic_prompt: Optional[str] = None
+    occasion: Optional[str] = None
     user_profile: Optional[dict] = None
 
 class CorrectionRequest(BaseModel):
@@ -56,6 +57,13 @@ class EnrichFabricRequest(BaseModel):
     bbox: dict
     label: str
     category: str
+    user_id: Optional[str] = "default"
+
+
+class TargetedScanRequest(BaseModel):
+    image_b64: str
+    target_description: str
+    current_labels: list = []
     user_id: Optional[str] = "default"
 
 
@@ -78,7 +86,7 @@ async def cv_scan(req: ScanRequest):
         now = time.time()
         if user_key in _last_scan_cache:
             cached = _last_scan_cache[user_key]
-            if now - cached["timestamp"] < 8.0:
+            if now - cached["timestamp"] < 3.0:
                 log.info(f"[CV SCAN] Returning cached scan for user={user_key} (< 8s since last scan)")
                 return cached["result"]
 
@@ -209,6 +217,117 @@ async def cv_analyze(req: AnalyzeRequest):
 
 
 # ══════════════════════════════════════════════════════════════════
+#  Tavily image search helper (for combo reference images)
+# ══════════════════════════════════════════════════════════════════
+
+def _fetch_style_images(aesthetic: str, vibe: str, max_images: int = 6) -> list:
+    """
+    Fetch reference outfit images for a combo using MongoDB cache first,
+    then Tavily web search fallback. Returns list of image URL strings.
+
+    Fails GRACEFULLY — returns [] if TAVILY_API_KEY is absent/invalid
+    or if any error occurs, so the combo endpoint never crashes.
+    """
+    import os, re
+
+    if not aesthetic and not vibe:
+        return []
+
+    # ── MongoDB cache lookup ────────────────────────────────────
+    try:
+        from shaaru_brain import _get_db
+        db = _get_db()
+        if db is not None:
+            query_key = (aesthetic or vibe or "").lower().strip()
+            cached = db["styling_guides"].find_one(
+                {"aesthetic_search_key": {"$regex": re.escape(query_key), "$options": "i"}},
+                {"reference_images": 1}
+            )
+            if cached and cached.get("reference_images") and len(cached["reference_images"]) >= 2:
+                log.info(f"[CV COMBOS IMAGES] Cache hit for '{query_key}'")
+                return cached["reference_images"][:max_images]
+    except Exception as e:
+        log.warning(f"[CV COMBOS IMAGES] MongoDB cache lookup failed: {e}")
+
+    # ── Tavily fallback ─────────────────────────────────────────
+    tavily_key = os.environ.get("TAVILY_API_KEY", "")
+    if not tavily_key:
+        log.info("[CV COMBOS IMAGES] TAVILY_API_KEY not set — skipping image fetch, returning text-only combos")
+        return []
+
+    try:
+        from tavily import TavilyClient
+        client = TavilyClient(api_key=tavily_key)
+
+        query_term = aesthetic or vibe or "outfit style"
+        query = f"{query_term} outfit fashion clothing style"
+
+        result = client.search(
+            query=query,
+            search_depth="advanced",
+            include_images=True,
+            include_domains=["pinterest.com", "vogue.com", "whowhatwear.com", "harpersbazaar.com", "elle.com"],
+            max_results=10,
+        )
+
+        # Extract image URLs from top-level result["images"] AND nested result["results"][]["images"]
+        raw_images = list(result.get("images", []))
+        for r in result.get("results", []):
+            if isinstance(r, dict) and "images" in r and isinstance(r["images"], list):
+                raw_images.extend(r["images"])
+
+        # Filter to real image URLs only (jpg, jpeg, webp, png) and reject movie/film/media keywords
+        IMAGE_EXT = re.compile(r'\.(jpg|jpeg|webp|png)(\?.*)?$', re.IGNORECASE)
+        REJECT_KEYWORDS = re.compile(r'(movie|film|actor|poster|logo|gettyimages|svg|icon|avatar|news|review)', re.IGNORECASE)
+
+        seen_urls = set()
+        images = []
+        for url in raw_images:
+            if not isinstance(url, str) or not url.startswith("http"):
+                continue
+            if not IMAGE_EXT.search(url) or REJECT_KEYWORDS.search(url):
+                continue
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            images.append(url)
+            if len(images) >= max_images:
+                break
+
+        if not images:
+            log.info(f"[CV COMBOS IMAGES] Tavily returned no usable image URLs for '{query_term}'")
+            return []
+
+        log.info(f"[CV COMBOS IMAGES] Tavily fetched {len(images)} images for '{query_term}'")
+
+        # ── Write-back to MongoDB so next request is served from cache ──
+        try:
+            from shaaru_brain import _get_db
+            from datetime import datetime, timezone
+            db = _get_db()
+            if db is not None:
+                db["styling_guides"].update_one(
+                    {"aesthetic_search_key": query_term.lower()},
+                    {"$set": {
+                        "aesthetic_search_key": query_term.lower(),
+                        "aesthetic_description": vibe or aesthetic or "",
+                        "reference_images": images,
+                        "images_updated_at": datetime.now(timezone.utc),
+                    }},
+                    upsert=True,
+                )
+                log.info(f"[CV COMBOS IMAGES] Wrote {len(images)} images to styling_guides cache")
+        except Exception as write_err:
+            log.warning(f"[CV COMBOS IMAGES] MongoDB write-back failed (non-fatal): {write_err}")
+
+        return images
+
+    except Exception as e:
+        log.warning(f"[CV COMBOS IMAGES] Tavily image fetch failed (non-fatal): {e}")
+        return []
+
+
+# ══════════════════════════════════════════════════════════════════
 #  POST /api/cv/style-combos
 # ══════════════════════════════════════════════════════════════════
 
@@ -219,15 +338,29 @@ async def cv_style_combos(req: StyleCombosRequest):
     Uses Riley's LLM to reason about what works together and
     what pieces are missing, with specific find-it descriptions.
     Formats active hunt directives and scan prompts for voice TTS.
+    Attaches reference outfit images from MongoDB cache or Tavily.
     """
     if not req.items:
-        return {"combos": []}
-    combos = generate_outfit_combinations(
+        return {"combos": [], "model_used": "none"}
+    combos, model_used = generate_outfit_combinations(
         detected_items=req.items,
         aesthetic_prompt=req.aesthetic_prompt,
+        occasion=req.occasion,
         user_profile=req.user_profile,
+        return_meta=True,
     )
-    res = {"combos": combos}
+
+    # Attach reference images per combo (non-blocking — fails gracefully to [])
+    for combo in combos:
+        aesthetic = combo.get("name", "") or req.aesthetic_prompt or ""
+        vibe = combo.get("vibe", "")
+        try:
+            combo["reference_images"] = _fetch_style_images(aesthetic, vibe, max_images=6)
+        except Exception as img_err:
+            log.warning(f"[CV COMBOS] Image fetch for combo failed (non-fatal): {img_err}")
+            combo["reference_images"] = []
+
+    res = {"combos": combos, "model_used": model_used}
     try:
         from cv_engine import format_combos_for_speech
         spoken_text = format_combos_for_speech(combos)
@@ -369,6 +502,38 @@ async def cv_correct(req: CorrectionRequest):
     except Exception as e:
         log.error(f"[CV CORRECT] Failed to write correction log: {e}")
         return {"status": "error", "error": str(e)}
+
+
+# ══════════════════════════════════════════════════════════════════
+#  POST /api/cv/targeted-scan
+# ══════════════════════════════════════════════════════════════════
+
+@router.post("/targeted-scan")
+async def cv_targeted_scan(req: TargetedScanRequest):
+    """
+    Voice-triggered focused scan for a specific garment the user is pointing out.
+
+    Only called when the frontend detects clear pointing intent in the transcript
+    (e.g. 'can you see the jacket behind that top'). Runs the 11B model with a
+    targeted prompt instructing it to search specifically for the described item,
+    ignoring already-tracked items. Returns a single ScannedItem-compatible dict
+    or found=false with no crash.
+    """
+    try:
+        result = targeted_scan_frame(
+            image_b64=req.image_b64,
+            target_description=req.target_description,
+            current_labels=req.current_labels or [],
+            user_id=req.user_id or "default",
+        )
+        log.info(
+            f"[CV TARGETED SCAN] user={req.user_id} | found={result.get('found')} | "
+            f"description='{req.target_description[:60]}'"
+        )
+        return result
+    except Exception as e:
+        log.error(f"[CV TARGETED SCAN] Exception: {e}")
+        return {"found": False, "item": None, "source": "voice_targeted_scan", "error": str(e)}
 
 
 @router.post("/enrich-fabric")

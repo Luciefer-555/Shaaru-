@@ -84,15 +84,81 @@ class KnowledgeGraph:
         return self.query(cypher, {"aesthetics": aesthetics})
 
     def query_item_pairings(self, item_name: str) -> list:
-        """Find pairing suggestions for a specific item."""
+        """Find pairing suggestions for a specific item across Aesthetic and Construction nodes."""
         cypher = """
-        MATCH (base:Aesthetic)-[:PAIRS_WITH|COMPLEMENTS]->(pair:Aesthetic)
-        WHERE toLower(base.name) CONTAINS toLower($item_name)
-        RETURN pair.name AS paired_item, "style pairing" AS technique,
-               1.0 AS score
+        MATCH (base)-[r:PAIRS_WITH|COMPLEMENTS]-(pair)
+        WHERE (base:Aesthetic OR base:Construction OR base:Product)
+          AND (toLower(base.name) CONTAINS toLower($item_name) OR toLower($item_name) CONTAINS toLower(base.name))
+          AND (r.pairing_confidence IS NULL OR r.pairing_confidence >= 0.5)
+          AND (r.evidence_status IS NULL OR r.evidence_status <> 'llm_generated_unverified')
+        RETURN pair.name AS paired_item, "style pairing" AS technique, coalesce(r.pairing_confidence, 1.0) AS score
         LIMIT 10
         """
         return self.query(cypher, {"item_name": item_name})
+
+    def query_occasion_suitability(self, occasion: str, item_labels: list = None) -> list:
+        """Find Aesthetic, Construction, and Product nodes that suit a specific occasion or match scanned item labels."""
+        if not self.is_connected or not occasion:
+            return []
+        cypher = """
+        MATCH (base)-[r:SUITS_OCCASION]->(occ:Occasion)
+        WITH base, occ, r,
+             (toLower(occ.name) CONTAINS toLower($occasion) OR toLower($occasion) CONTAINS toLower(occ.name)) AS occasion_matched
+        WHERE (base:Product OR base:Aesthetic OR base:Construction)
+          AND (r.evidence_status IS NULL OR r.evidence_status <> 'llm_generated_unverified')
+          AND (
+            occasion_matched
+            OR (
+              $item_labels IS NOT NULL AND size($item_labels) > 0 AND
+              any(lbl IN $item_labels WHERE lbl <> '' AND (
+                toLower(coalesce(base.name, base.title, '')) CONTAINS toLower(lbl) OR
+                toLower(lbl) CONTAINS toLower(coalesce(base.name, base.title, '')) OR
+                (base.category IS NOT NULL AND toLower(base.category) CONTAINS toLower(lbl)) OR
+                (base.garment_class IS NOT NULL AND toLower(base.garment_class) CONTAINS toLower(lbl))
+              ))
+            )
+          )
+        RETURN DISTINCT labels(base)[0] AS type, coalesce(base.title, base.name) AS item_name, occ.name AS occasion, coalesce(base.description, base.caption, '') AS description, occasion_matched
+        ORDER BY occasion_matched DESC
+        LIMIT 15
+        """
+        return self.query(cypher, {"occasion": occasion, "item_labels": item_labels or []})
+
+    def query_construction_pairings(self, construction_name: str, gender: str = None) -> list:
+        """Find pairing suggestions between Construction nodes with confidence ranking and gender filtering."""
+        cypher = """
+        MATCH (c1:Construction)-[r:PAIRS_WITH]-(c2:Construction)
+        WHERE (toLower(c1.name) CONTAINS toLower($name) OR toLower($name) CONTAINS toLower(c1.name))
+          AND (r.pairing_confidence IS NULL OR r.pairing_confidence >= 0.5)
+          AND (r.evidence_status IS NULL OR r.evidence_status <> 'llm_generated_unverified')
+          AND ($gender IS NULL OR c2.gender_association IS NULL OR c2.gender_association = 'unisex' OR c2.gender_association = $gender)
+        RETURN c2.name AS paired_item, c2.garment_class AS garment_class, coalesce(r.pairing_confidence, 1.0) AS pairing_confidence, coalesce(r.source_urls, []) AS source_urls, coalesce(r.context_label, 'standard') AS context_label, r.evidence_status AS evidence_status
+        ORDER BY pairing_confidence DESC
+        LIMIT 15
+        """
+        return self.query(cypher, {"name": construction_name, "gender": gender})
+
+    def query_construction_fabrics(self, construction_name: str) -> list:
+        """Find required or recommended fabrics for a Construction node."""
+        cypher = """
+        MATCH (c:Construction)-[:REQUIRES_FABRIC]->(f:Fabric)
+        WHERE toLower(c.name) CONTAINS toLower($name) OR toLower($name) CONTAINS toLower(c.name)
+        RETURN c.name AS construction, f.name AS fabric
+        LIMIT 10
+        """
+        return self.query(cypher, {"name": construction_name})
+
+    def query_silhouette_constructions(self, aesthetics: list) -> list:
+        """Find Construction silhouettes that suit specific aesthetics."""
+        if not self.is_connected or not aesthetics:
+            return []
+        cypher = """
+        MATCH (a:Aesthetic)-[:SUITS_SILHOUETTE]->(c:Construction)
+        WHERE a.name IN $aesthetics
+        RETURN a.name AS aesthetic, c.name AS construction, c.garment_class AS garment_class
+        LIMIT 15
+        """
+        return self.query(cypher, {"aesthetics": aesthetics})
 
     def query_influencer_picks(self, limit: int = 3) -> list:
         """Get recent influencer style picks."""
@@ -259,6 +325,130 @@ class KnowledgeGraph:
 
         log.info("Aesthetic edges seeded — PAIRS_WITH, CONFLICTS_WITH, REQUIRES_FABRIC")
 
+    def seed_construction_nodes_and_edges(self) -> None:
+        """
+        Seed 36 Construction nodes mirroring Fashionpedia and Indian ethnic categories,
+        plus SUITS_SILHOUETTE, PAIRS_WITH, and REQUIRES_FABRIC relationships.
+        Safe to re-run — uses MERGE, not CREATE.
+        """
+        if not self.is_connected:
+            return
+
+        constructions = [
+            {"name": "shirt_blouse", "garment_class": "top", "silhouette": "structured/draped", "gender_association": "unisex"},
+            {"name": "top_t_shirt_sweatshirt", "garment_class": "top", "silhouette": "relaxed", "gender_association": "unisex"},
+            {"name": "sweater", "garment_class": "top", "silhouette": "relaxed", "gender_association": "unisex"},
+            {"name": "cardigan", "garment_class": "top", "silhouette": "layered", "gender_association": "unisex"},
+            {"name": "jacket", "garment_class": "outerwear", "silhouette": "structured", "gender_association": "unisex"},
+            {"name": "vest", "garment_class": "outerwear", "silhouette": "layered", "gender_association": "unisex"},
+            {"name": "pants", "garment_class": "bottom", "silhouette": "tailored/relaxed", "gender_association": "unisex"},
+            {"name": "shorts", "garment_class": "bottom", "silhouette": "relaxed", "gender_association": "unisex"},
+            {"name": "skirt", "garment_class": "bottom", "silhouette": "flowing/structured", "gender_association": "womenswear"},
+            {"name": "coat", "garment_class": "outerwear", "silhouette": "structured/long", "gender_association": "unisex"},
+            {"name": "dress", "garment_class": "dress", "silhouette": "one-piece", "gender_association": "womenswear"},
+            {"name": "jumpsuit", "garment_class": "dress", "silhouette": "one-piece tailored", "gender_association": "womenswear"},
+            {"name": "cape", "garment_class": "outerwear", "silhouette": "draped/dramatic", "gender_association": "unisex"},
+            {"name": "glasses", "garment_class": "accessory", "silhouette": "accessory", "gender_association": "unisex"},
+            {"name": "hat", "garment_class": "accessory", "silhouette": "headwear", "gender_association": "unisex"},
+            {"name": "headband_hair_accessory", "garment_class": "accessory", "silhouette": "headwear", "gender_association": "womenswear"},
+            {"name": "tie", "garment_class": "accessory", "silhouette": "neckwear", "gender_association": "menswear"},
+            {"name": "glove", "garment_class": "accessory", "silhouette": "handwear", "gender_association": "unisex"},
+            {"name": "watch", "garment_class": "accessory", "silhouette": "wristwear", "gender_association": "unisex"},
+            {"name": "belt", "garment_class": "accessory", "silhouette": "waistwear", "gender_association": "unisex"},
+            {"name": "leg_warmer", "garment_class": "accessory", "silhouette": "legwear", "gender_association": "unisex"},
+            {"name": "tights_stockings", "garment_class": "accessory", "silhouette": "legwear", "gender_association": "womenswear"},
+            {"name": "sock", "garment_class": "accessory", "silhouette": "footwear accessory", "gender_association": "unisex"},
+            {"name": "shoe", "garment_class": "footwear", "silhouette": "footwear", "gender_association": "unisex"},
+            {"name": "bag_wallet", "garment_class": "accessory", "silhouette": "carry", "gender_association": "unisex"},
+            {"name": "scarf", "garment_class": "accessory", "silhouette": "draped", "gender_association": "unisex"},
+            {"name": "umbrella", "garment_class": "accessory", "silhouette": "carry accessory", "gender_association": "unisex"},
+            {"name": "saree", "garment_class": "dress", "silhouette": "draped", "gender_association": "womenswear"},
+            {"name": "lehenga_set", "garment_class": "set", "silhouette": "voluminous skirt + cropped blouse + drape", "gender_association": "womenswear"},
+            {"name": "kurta", "garment_class": "top", "silhouette": "straight/A-line tunic", "gender_association": "unisex"},
+            {"name": "salwar_kameez_set", "garment_class": "set", "silhouette": "tunic + pleated trousers + drape", "gender_association": "womenswear"},
+            {"name": "sharara_set", "garment_class": "set", "silhouette": "flared wide-leg pants + short tunic + drape", "gender_association": "womenswear"},
+            {"name": "anarkali_dress", "garment_class": "dress", "silhouette": "frock-style flared tunic", "gender_association": "womenswear"},
+            {"name": "dupatta", "garment_class": "accessory", "silhouette": "stole/drape", "gender_association": "womenswear"},
+            {"name": "co_ord_set", "garment_class": "set", "silhouette": "matching top + bottom", "gender_association": "unisex"},
+            {"name": "romper", "garment_class": "dress", "silhouette": "one-piece short", "gender_association": "womenswear"}
+        ]
+
+        silhouette_suits = [
+            ("Quiet Luxury", "shirt_blouse"), ("Quiet Luxury", "pants"), ("Quiet Luxury", "jacket"), ("Quiet Luxury", "dress"), ("Quiet Luxury", "coat"),
+            ("Minimalist", "shirt_blouse"), ("Minimalist", "pants"), ("Minimalist", "dress"), ("Minimalist", "sweater"), ("Minimalist", "vest"),
+            ("Global Indian Chic", "saree"), ("Global Indian Chic", "lehenga_set"), ("Global Indian Chic", "kurta"), ("Global Indian Chic", "salwar_kameez_set"), ("Global Indian Chic", "sharara_set"), ("Global Indian Chic", "anarkali_dress"), ("Global Indian Chic", "dupatta"), ("Global Indian Chic", "co_ord_set"),
+            ("Heritage Luxury", "saree"), ("Heritage Luxury", "lehenga_set"), ("Heritage Luxury", "anarkali_dress"),
+            ("Indo Western Fusion", "co_ord_set"), ("Indo Western Fusion", "cape"), ("Indo Western Fusion", "jumpsuit"), ("Indo Western Fusion", "sharara_set"), ("Indo Western Fusion", "vest"),
+            ("Streetwear", "top_t_shirt_sweatshirt"), ("Streetwear", "pants"), ("Streetwear", "shorts"), ("Streetwear", "jacket"), ("Streetwear", "hat"), ("Streetwear", "shoe"), ("Streetwear", "belt"),
+            ("Editorial", "dress"), ("Editorial", "coat"), ("Editorial", "cape"), ("Editorial", "jumpsuit"), ("Editorial", "skirt"),
+            ("Old Money", "shirt_blouse"), ("Old Money", "cardigan"), ("Old Money", "sweater"), ("Old Money", "pants"), ("Old Money", "jacket"), ("Old Money", "watch"), ("Old Money", "tie"), ("Old Money", "glove"),
+            ("Cottagecore", "dress"), ("Cottagecore", "skirt"), ("Cottagecore", "cardigan"), ("Cottagecore", "headband_hair_accessory"), ("Cottagecore", "scarf")
+        ]
+
+        pairs = [
+            ("shirt_blouse", "pants"), ("shirt_blouse", "skirt"), ("shirt_blouse", "jacket"), ("shirt_blouse", "vest"), ("shirt_blouse", "belt"),
+            ("top_t_shirt_sweatshirt", "pants"), ("top_t_shirt_sweatshirt", "shorts"), ("top_t_shirt_sweatshirt", "jacket"), ("top_t_shirt_sweatshirt", "shoe"),
+            ("sweater", "pants"), ("sweater", "skirt"), ("sweater", "coat"), ("sweater", "scarf"),
+            ("cardigan", "shirt_blouse"), ("cardigan", "top_t_shirt_sweatshirt"), ("cardigan", "dress"), ("cardigan", "pants"),
+            ("jacket", "shirt_blouse"), ("jacket", "pants"), ("jacket", "skirt"), ("jacket", "dress"), ("jacket", "vest"),
+            ("kurta", "pants"), ("kurta", "dupatta"), ("kurta", "jacket"), ("kurta", "scarf"),
+            ("saree", "shirt_blouse"), ("saree", "dupatta"), ("saree", "bag_wallet"), ("saree", "shoe"),
+            ("lehenga_set", "dupatta"), ("lehenga_set", "bag_wallet"), ("lehenga_set", "shoe"), ("lehenga_set", "headband_hair_accessory"),
+            ("salwar_kameez_set", "dupatta"), ("salwar_kameez_set", "shoe"), ("salwar_kameez_set", "bag_wallet"),
+            ("sharara_set", "dupatta"), ("sharara_set", "shoe"), ("sharara_set", "bag_wallet"),
+            ("anarkali_dress", "dupatta"), ("anarkali_dress", "shoe"), ("anarkali_dress", "bag_wallet"),
+            ("dress", "jacket"), ("dress", "coat"), ("dress", "cardigan"), ("dress", "belt"), ("dress", "shoe"), ("dress", "bag_wallet"),
+            ("jumpsuit", "jacket"), ("jumpsuit", "belt"), ("jumpsuit", "shoe"), ("jumpsuit", "bag_wallet"),
+            ("co_ord_set", "jacket"), ("co_ord_set", "coat"), ("co_ord_set", "shoe"), ("co_ord_set", "bag_wallet"), ("co_ord_set", "glasses")
+        ]
+
+        fab_reqs = [
+            ("shirt_blouse", "cotton_poplin"), ("shirt_blouse", "cotton_broadcloth"), ("shirt_blouse", "linen_plain"),
+            ("top_t_shirt_sweatshirt", "cotton_jersey"), ("top_t_shirt_sweatshirt", "french_terry"), ("top_t_shirt_sweatshirt", "modal_jersey"),
+            ("sweater", "merino_knit"), ("sweater", "cashmere_plain"),
+            ("jacket", "wool_gabardine"), ("jacket", "poly_viscose_suiting_twill"), ("jacket", "tweed_wool"),
+            ("pants", "wool_gabardine"), ("pants", "cotton_twill"), ("pants", "denim_raw_selvedge"),
+            ("dress", "silk_crepe_de_chine"), ("dress", "satin_silk"), ("dress", "georgette_polyester"),
+            ("saree", "silk_charmeuse"), ("saree", "shantung_silk"), ("saree", "georgette_polyester"), ("saree", "brocade_polyester"),
+            ("lehenga_set", "silk_velvet"), ("lehenga_set", "raw_silk_dupion"), ("lehenga_set", "brocade_polyester"),
+            ("kurta", "cotton_poplin"), ("kurta", "belgian_linen"), ("kurta", "raw_silk_dupion"),
+            ("salwar_kameez_set", "cotton_poplin"), ("salwar_kameez_set", "georgette_polyester"), ("salwar_kameez_set", "silk_crepe_de_chine"),
+            ("sharara_set", "georgette_polyester"), ("sharara_set", "silk_velvet"), ("sharara_set", "brocade_polyester"),
+            ("anarkali_dress", "georgette_polyester"), ("anarkali_dress", "silk_crepe_de_chine"), ("anarkali_dress", "raw_silk_dupion"),
+            ("dupatta", "georgette_polyester"), ("dupatta", "silk_charmeuse"), ("dupatta", "brocade_polyester"),
+            ("co_ord_set", "belgian_linen"), ("co_ord_set", "cotton_poplin"), ("co_ord_set", "poly_viscose_suiting_twill")
+        ]
+
+        with self.driver.session() as session:
+            for item in constructions:
+                session.run(
+                    "MERGE (c:Construction {name: $name}) "
+                    "ON CREATE SET c.garment_class = $garment_class, c.silhouette = $silhouette, c.gender_association = $gender_association "
+                    "ON MATCH SET c.garment_class = $garment_class, c.silhouette = $silhouette, c.gender_association = $gender_association",
+                    name=item["name"], garment_class=item["garment_class"], silhouette=item["silhouette"], gender_association=item["gender_association"]
+                )
+            for aes, con in silhouette_suits:
+                session.run(
+                    "MATCH (a:Aesthetic {name: $aes}) MATCH (c:Construction {name: $con}) "
+                    "MERGE (a)-[:SUITS_SILHOUETTE]->(c)",
+                    aes=aes, con=con
+                )
+            for c1, c2 in pairs:
+                session.run(
+                    "MATCH (a:Construction {name: $c1}) MATCH (b:Construction {name: $c2}) "
+                    "MERGE (a)-[:PAIRS_WITH]->(b)",
+                    c1=c1, c2=c2
+                )
+            for con, fab in fab_reqs:
+                session.run(
+                    "MATCH (c:Construction {name: $con}) "
+                    "MERGE (f:Fabric {name: $fab}) "
+                    "MERGE (c)-[:REQUIRES_FABRIC]->(f)",
+                    con=con, fab=fab
+                )
+
+        log.info("Construction nodes and edges seeded successfully")
+
     def sync_product_document(self, doc: dict) -> bool:
         """
         Upsert a pipeline product document into Neo4j.
@@ -414,6 +604,10 @@ class _FallbackKG:
     def query(self, *a, **kw): return []
     def query_pairings(self, *a, **kw): return []
     def query_item_pairings(self, *a, **kw): return []
+    def query_construction_pairings(self, *a, **kw): return []
+    def query_construction_fabrics(self, *a, **kw): return []
+    def query_silhouette_constructions(self, *a, **kw): return []
+    def seed_construction_nodes_and_edges(self): pass
     def query_influencer_picks(self, *a, **kw): return []
     def get_fashion_context(self, *a, **kw): return ""
     def get_style_graph_context(self, *a, **kw): return ""
