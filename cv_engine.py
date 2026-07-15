@@ -276,6 +276,31 @@ def _repair_json_with_llm(malformed_text: str) -> Optional[dict]:
         return None
 
 
+KNOWN_TAXONOMY_CATEGORIES = {
+    "top", "bottom", "outerwear", "footwear", "accessory", "dress", "set", "garment", "combo"
+}
+KNOWN_TAXONOMY_CONSTRUCTIONS = {
+    "shirt_blouse", "top_t_shirt_sweatshirt", "sweater", "cardigan", "kurta",
+    "pants", "shorts", "skirt", "jacket", "vest", "coat", "cape",
+    "dress", "jumpsuit", "romper", "saree", "anarkali_dress",
+    "co_ord_set", "lehenga_set", "salwar_kameez_set", "sharara_set",
+    "shoe", "bag_wallet", "belt", "scarf", "dupatta", "glasses", "hat",
+    "headband_hair_accessory", "tie", "glove", "watch", "leg_warmer",
+    "tights_stockings", "sock", "umbrella"
+}
+_CONSTRUCTION_TO_CATEGORY = {
+    "shirt_blouse": "top", "top_t_shirt_sweatshirt": "top", "sweater": "top", "cardigan": "top", "kurta": "top",
+    "pants": "bottom", "shorts": "bottom", "skirt": "bottom",
+    "jacket": "outerwear", "vest": "outerwear", "coat": "outerwear", "cape": "outerwear",
+    "dress": "dress", "jumpsuit": "dress", "romper": "dress", "saree": "dress", "anarkali_dress": "dress",
+    "co_ord_set": "set", "lehenga_set": "set", "salwar_kameez_set": "set", "sharara_set": "set",
+    "shoe": "footwear", "bag_wallet": "accessory", "belt": "accessory", "scarf": "accessory",
+    "dupatta": "accessory", "glasses": "accessory", "hat": "accessory", "headband_hair_accessory": "accessory",
+    "tie": "accessory", "glove": "accessory", "watch": "accessory", "leg_warmer": "accessory",
+    "tights_stockings": "accessory", "sock": "accessory", "umbrella": "accessory"
+}
+
+
 def _filter_body_parts(items: list) -> list:
     """
     Strict denylist check and positive taxonomy allowlist check applied during result parsing/dedup.
@@ -291,16 +316,6 @@ def _filter_body_parts(items: list) -> list:
         "wrist", "wrists", "arm", "arms", "leg", "legs", "person", "persons", "human", "humans",
         "body", "bodies", "skin", "palm", "palms", "nail", "nails"
     ]
-    KNOWN_TAXONOMY_CATEGORIES = {
-        "top", "bottom", "outerwear", "footwear", "accessory", "dress", "set", "garment", "combo"
-    }
-    KNOWN_TAXONOMY_CONSTRUCTIONS = {
-        "shirt_blouse", "top_t_shirt_sweatshirt", "sweater", "cardigan", "kurta",
-        "pants", "shorts", "skirt", "jacket", "vest", "coat", "cape",
-        "dress", "jumpsuit", "saree", "anarkali_dress",
-        "co_ord_set", "lehenga_set", "salwar_kameez_set", "sharara_set",
-        "shoe", "bag_wallet", "belt", "scarf", "dupatta", "glasses", "hat"
-    }
     SAFE_FASHION_TERMS = [
         "handloom", "handwoven", "handspun", "handcrafted", "handwork", "hand-woven", "hand-spun", "hand-loom",
         "hand block", "hand-block", "breathable body", "soft body", "structured body", "tactile body",
@@ -2061,6 +2076,114 @@ async def call_with_timeout(coro, seconds=12):
         return None
 
 
+class Yolo26ApparelDetector:
+    """
+    Ticket A: Hybrid YOLO26 localization engine using pretrained weights for plumbing verification.
+    Handles instant bounding box localization and TemporalConsensusTracker handoff.
+    Fails LOUD if ultralytics engine or weight checkpoint is unavailable.
+    """
+    _model = None
+    _init_attempted = False
+
+    @classmethod
+    def get_model(cls):
+        import os
+        if not cls._init_attempted:
+            cls._init_attempted = True
+            try:
+                from ultralytics import YOLO
+                weights_path = os.environ.get("YOLO26_WEIGHTS", "yolov8s.pt")
+                cls._model = YOLO(weights_path)
+                log.info(f"[YOLO26] Successfully initialized YOLO localization model with checkpoint: {weights_path}")
+            except Exception as e:
+                log.error(f"[YOLO26 FATAL] Pretrained YOLO checkpoint/engine ('{os.environ.get('YOLO26_WEIGHTS', 'yolov8s.pt')}') or ultralytics is NOT available: {e}! Falling back to _FAST_SCAN_PROMPT VLM localization — WARNING: bounding box localization is running in degraded VLM fallback mode!")
+                cls._model = None
+        return cls._model
+
+    @classmethod
+    def detect(cls, image_b64: str) -> Optional[dict]:
+        """
+        Runs YOLO localization on base64 frame.
+        Enforces hard taxonomy allowlist gate (KNOWN_TAXONOMY_CONSTRUCTIONS).
+        Returns {'items': [...], '_model_used': 'YOLO26-COCO-Plumbing'} or None if fatal error / unavailable.
+        """
+        model = cls.get_model()
+        if model is None:
+            return None
+
+        import os, base64, io
+        from PIL import Image
+        import numpy as np
+
+        try:
+            raw_data = image_b64.split(",")[-1] if "," in image_b64 else image_b64
+            raw_bytes = base64.b64decode(raw_data)
+            pil_img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
+            w_img, h_img = pil_img.size
+        except Exception as e:
+            log.error(f"[YOLO26 FATAL] Failed to decode base64 image for localization: {e}")
+            return None
+
+        try:
+            results = model.predict(source=pil_img, conf=0.35, verbose=False)
+            items = []
+            if results and len(results) > 0:
+                boxes = results[0].boxes
+                names = results[0].names
+                for i, box in enumerate(boxes):
+                    xywh = box.xywh[0].cpu().numpy()
+                    conf = float(box.conf[0].cpu().numpy())
+                    cls_id = int(box.cls[0].cpu().numpy())
+                    raw_name = names.get(cls_id, str(cls_id)).lower().strip()
+
+                    # [TEST-ONLY / STAGING COCO PLUMBING PROOF]
+                    # Map COCO pretrained classes (`person`, `handbag`, `tie`, `umbrella`) to SHAARU `KNOWN_TAXONOMY_CONSTRUCTIONS`
+                    # ONLY when explicitly enabled via `ENABLE_COCO_PLUMBING_PROXY_MAPPINGS=1` in staging/testing.
+                    # This guarantees COCO proxy mappings CANNOT reach user-facing production paths before Ticket B ships real weights.
+                    if os.environ.get("ENABLE_COCO_PLUMBING_PROXY_MAPPINGS") == "1":
+                        if raw_name in ("handbag", "backpack", "suitcase"):
+                            label = "bag_wallet"
+                        elif raw_name == "tie":
+                            label = "tie"
+                        elif raw_name == "umbrella":
+                            label = "umbrella"
+                        elif raw_name == "person":
+                            # [TEST-ONLY] Proxy mapping full-body person detections to `co_ord_set` for outfit plumbing proof
+                            label = "co_ord_set"
+                        else:
+                            label = raw_name
+                    else:
+                        label = raw_name
+
+                    # Hard Taxonomy Allowlist Gate (Requirement #1 & #4)
+                    if label not in KNOWN_TAXONOMY_CONSTRUCTIONS:
+                        log.info(f"[CV ALLOWLIST] Dropped out-of-vocab YOLO detection: label='{label}' (raw='{raw_name}', conf={conf:.2f})")
+                        continue
+
+                    cat = _CONSTRUCTION_TO_CATEGORY.get(label, "top")
+
+                    # Convert center coords [cx, cy, w, h] to top-left normalized [x, y, w, h]
+                    cx, cy, bw, bh = xywh[0] / float(w_img), xywh[1] / float(h_img), xywh[2] / float(w_img), xywh[3] / float(h_img)
+                    bx = max(0.0, min(1.0, cx - bw / 2.0))
+                    by = max(0.0, min(1.0, cy - bh / 2.0))
+                    bw = max(0.02, min(1.0 - bx, bw))
+                    bh = max(0.02, min(1.0 - by, bh))
+
+                    items.append({
+                        "id": f"yolo_{i}",
+                        "label": label,
+                        "description": f"Detected {label} via YOLO localization",
+                        "category": cat,
+                        "confidence": round(conf, 2),
+                        "bbox": {"x": round(float(bx), 4), "y": round(float(by), 4), "w": round(float(bw), 4), "h": round(float(bh), 4)},
+                        "fabric_type": "pending"
+                    })
+            return {"items": items, "frame_quality": "good", "scene_lighting": "unknown", "_model_used": "YOLO26-COCO-Plumbing"}
+        except Exception as e:
+            log.error(f"[YOLO26 FATAL] YOLO inference execution failed: {e}")
+            return None
+
+
 async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_consensus: bool = True, run_combos: bool = False) -> dict:
     import os
     import asyncio
@@ -2104,7 +2227,13 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
 
     # ── [TIMING] Preprocess already done in scan_frame — log it here only in async path
     async def run_dual_models():
-        # Fast Path: Llama-3.2-11B-Vision with _FAST_SCAN_PROMPT (~6-10s)
+        # Ticket A: Run YOLO26 localization first
+        res_yolo = Yolo26ApparelDetector.detect(image_b64)
+        if res_yolo is not None:
+            return None, res_yolo
+
+        log.error("[YOLO26 FATAL] Pretrained YOLO checkpoint/engine ('yolov8s.pt'/'yolo26s.pt') or ultralytics is NOT available! Falling back to _FAST_SCAN_PROMPT VLM localization — WARNING: bounding box localization is running in degraded VLM fallback mode!")
+        # Fast Path fallback: Llama-3.2-11B-Vision with _FAST_SCAN_PROMPT (~6-10s)
         # Note: 90B and Nemotron-4-340B removed from synchronous live scan path.
         # 90B is now used for Asynchronous Fabric Enrichment on cropped item regions.
         fast_messages = [
@@ -2122,7 +2251,7 @@ async def scan_frame_async(image_b64: str, user_id: str = "default", _apply_cons
         ]
         res_fast = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_11B, fast_messages, True, timeout=12.0), 12.0)
         if isinstance(res_fast, dict):
-            res_fast["_model_used"] = "Llama-3.2-11B-Fast"
+            res_fast["_model_used"] = "Llama-3.2-11B-Fast-Degraded"
             for item in res_fast.get("items", []):
                 if isinstance(item, dict) and not item.get("fabric_type"):
                     item["fabric_type"] = "pending"
@@ -2638,10 +2767,11 @@ Return ONLY a JSON object exactly matching this structure:
     ]
     
     async_client = _get_async_client()
-    res = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_90B, messages, True, timeout=35.0), 35.0)
+    # Ticket A: Crop-only VLM enrichment. Run Nemotron primary with re-benchmarked 4.5s timeout on crop.
+    res = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_NEMOTRON, messages, True, timeout=4.5), 4.5)
     if not res or not res.get("fabric_type"):
-        log.info(f"[CV ENRICH FABRIC] 90B timed out/failed on {track_id}, falling back to 11B")
-        res = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_11B, messages, True, timeout=15.0), 15.0)
+        log.info(f"[CV ENRICH FABRIC] Nemotron ({_MODEL_NEMOTRON}) timed out/failed on crop {track_id} after 4.5s, falling back to LLaMA 90B ({_MODEL_VISION_90B})")
+        res = await call_with_timeout(_call_model_for_scan(async_client, _MODEL_VISION_90B, messages, True, timeout=12.0), 12.0)
         
     fabric_type = res.get("fabric_type", "uncertain") if isinstance(res, dict) else "uncertain"
     fabric_reason = res.get("fabric_reason", "") if isinstance(res, dict) else ""
