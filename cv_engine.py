@@ -276,6 +276,76 @@ def _repair_json_with_llm(malformed_text: str) -> Optional[dict]:
         return None
 
 
+def _filter_body_parts(items: list) -> list:
+    """
+    Strict denylist check and positive taxonomy allowlist check applied during result parsing/dedup.
+    Discards any detection matching body parts before reaching _dedup_items, response payload, or frontend.
+    Logs discarded detections at info level without cluttering production logs.
+    """
+    if not items or not isinstance(items, list):
+        return []
+
+    import re
+    BODY_PART_DENYLIST = [
+        "hand", "hands", "finger", "fingers", "fingertip", "fingertips", "thumb", "thumbs",
+        "wrist", "wrists", "arm", "arms", "leg", "legs", "person", "persons", "human", "humans",
+        "body", "bodies", "skin", "palm", "palms", "nail", "nails"
+    ]
+    KNOWN_TAXONOMY_CATEGORIES = {
+        "top", "bottom", "outerwear", "footwear", "accessory", "dress", "set", "garment", "combo"
+    }
+    KNOWN_TAXONOMY_CONSTRUCTIONS = {
+        "shirt_blouse", "top_t_shirt_sweatshirt", "sweater", "cardigan", "kurta",
+        "pants", "shorts", "skirt", "jacket", "vest", "coat", "cape",
+        "dress", "jumpsuit", "saree", "anarkali_dress",
+        "co_ord_set", "lehenga_set", "salwar_kameez_set", "sharara_set",
+        "shoe", "bag_wallet", "belt", "scarf", "dupatta", "glasses", "hat"
+    }
+    SAFE_FASHION_TERMS = [
+        "handloom", "handwoven", "handspun", "handcrafted", "handwork", "hand-woven", "hand-spun", "hand-loom",
+        "hand block", "hand-block", "breathable body", "soft body", "structured body", "tactile body",
+        "crisp body", "fluid body", "full body", "upper body", "lower body", "fits the body", "drapes on body",
+        "drapes across body", "bodysuit", "bodycon", "legging", "leggings", "leg warmer", "leg warmers",
+        "armhole", "armholes", "moleskin", "palmetto", "nailhead"
+    ]
+
+    filtered: list = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        label = str(item.get("label", "") or "").strip()
+        desc = str(item.get("description", "") or "").strip()
+        cat = str(item.get("category", "") or "").strip().lower()
+
+        check_text = f"{label} {desc} {cat}".lower()
+        for safe_term in SAFE_FASHION_TERMS:
+            check_text = check_text.replace(safe_term, "")
+
+        discard_reason = None
+        for term in BODY_PART_DENYLIST:
+            if re.search(r'\b' + re.escape(term) + r'\b', check_text):
+                discard_reason = f"matched denylist term '{term}' in label/description/category"
+                break
+
+        if not discard_reason:
+            if cat and cat not in ("pending", "unknown", "pending-classification", ""):
+                if cat not in KNOWN_TAXONOMY_CATEGORIES and cat not in KNOWN_TAXONOMY_CONSTRUCTIONS:
+                    for term in BODY_PART_DENYLIST:
+                        if re.search(r'\b' + re.escape(term) + r'\b', cat):
+                            discard_reason = f"suspect category '{cat}' matched denylist term '{term}'"
+                            break
+                    if not discard_reason and re.search(r'\b(hand|finger|person|body)\b', cat):
+                        discard_reason = f"suspect non-taxonomy category '{cat}'"
+
+        if discard_reason:
+            log.info(f"[CV FILTER] Discarded detection: label='{label}', description='{desc}', category='{cat}' ({discard_reason})")
+        else:
+            filtered.append(item)
+
+    return filtered
+
+
 def _normalize_parsed_fabrics(data: Optional[dict]) -> Optional[dict]:
     """Map predicted fabric names to canonical MongoDB/Neo4j IDs to prevent downstream query drift."""
     if not data or not isinstance(data, dict):
@@ -376,6 +446,7 @@ def _normalize_parsed_fabrics(data: Optional[dict]) -> Optional[dict]:
                             if key in raw_fab or raw_fab in val.replace("_", " "):
                                 item["fabric_type"] = val
                                 break
+        data["items"] = _filter_body_parts(data["items"])
     return data
 
 
@@ -595,6 +666,7 @@ def _dedup_items(items: list) -> list:
     Renumbers item IDs after dedup to keep them sequential.
     Logs every removal.
     """
+    items = _filter_body_parts(items)
     deduped: list = []
     for item in items:
         key = item.get("label", "").lower().strip()
@@ -1506,8 +1578,10 @@ class TemporalConsensus:
 
     def update(self, items: list) -> list:
         import uuid
+        import time
         from collections import Counter
         
+        items = _filter_body_parts(items)
         # 1. Match new items against existing active tracks
         candidates = []
         for track_id, track in self._tracks.items():
@@ -1538,6 +1612,7 @@ class TemporalConsensus:
             if len(track["history"]) >= 1:
                 track["state"] = "confirmed"
             track["missed_cycles"] = 0
+            track["last_seen_time"] = time.time()
             
             # EMA BBox smoothing
             new_bbox = item.get("bbox", {})
@@ -1597,6 +1672,7 @@ class TemporalConsensus:
                     "track_id": track_id,
                     "state": "new",
                     "missed_cycles": 0,
+                    "last_seen_time": time.time(),
                     "raw_bbox": raw_bbox,
                     "smoothed_bbox": smoothed_bbox,
                     "fabric_type": item["fabric_type"],
@@ -1620,11 +1696,13 @@ class TemporalConsensus:
         # 4. Handle unmatched existing tracks (Coasting vs Pruning)
         coasting_items = []
         tracks_to_delete = []
-        for track_id, track in self._tracks.items():
+        now = time.time()
+        for track_id, track in list(self._tracks.items()):
             if track_id not in matched_tracks:
                 track["missed_cycles"] += 1
-                if track["missed_cycles"] == 1:
-                    # Enter coasting state for exactly 1 scan cycle
+                elapsed_since_seen = now - track.get("last_seen_time", now)
+                if track["missed_cycles"] == 1 and elapsed_since_seen <= 3.5:
+                    # Enter coasting state for exactly 1 scan cycle (capped at fixed short duration <= 3.5s)
                     track["state"] = "coasting"
                     coasting_item = dict(track["last_item"])
                     coasting_item["state"] = "coasting"
@@ -1632,14 +1710,15 @@ class TemporalConsensus:
                     coasting_item["bbox"] = dict(track["smoothed_bbox"])
                     coasting_items.append(coasting_item)
                 else:
-                    # Prune after 2+ missed cycles
+                    # Prune after 2+ missed cycles or if coasting duration cap (> 3.5s since last seen) is exceeded
                     tracks_to_delete.append(track_id)
                     
         for tid in tracks_to_delete:
-            del self._tracks[tid]
+            if tid in self._tracks:
+                del self._tracks[tid]
             
         # Combine active items and coasting items
-        final_items = [it for it in stabilized_items if it is not None] + coasting_items
+        final_items = _filter_body_parts([it for it in stabilized_items if it is not None] + coasting_items)
         
         # Renumber item IDs sequentially and sync legacy _history/_stable
         self._history = {}
@@ -2151,7 +2230,7 @@ def scan_frame(image_b64: str, user_id: str = "default", run_combos: bool = Fals
         }
 
     # ── Normalise and validate ──────────────────────────────────
-    items = data.get("items", [])
+    items = _filter_body_parts(data.get("items", []))
     frame_quality = data.get("frame_quality", "good")
 
     # ── Batch grid-based bbox localization first ─────────────────

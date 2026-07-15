@@ -86,8 +86,8 @@ async def cv_scan(req: ScanRequest):
         now = time.time()
         if user_key in _last_scan_cache:
             cached = _last_scan_cache[user_key]
-            if now - cached["timestamp"] < 3.0:
-                log.info(f"[CV SCAN] Returning cached scan for user={user_key} (< 8s since last scan)")
+            if now - cached["timestamp"] < 1.5:
+                log.info(f"[CV SCAN] Returning cached scan for user={user_key} (< 1.5s since last scan)")
                 return cached["result"]
 
         result = scan_frame(req.image_b64, user_id=req.user_id, run_combos=False)

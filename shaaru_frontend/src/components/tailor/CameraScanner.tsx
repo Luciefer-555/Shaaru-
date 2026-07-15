@@ -40,10 +40,33 @@ export type TrackedBox = ScannedItem & {
 const TAXONOMY_CATEGORIES = ["top", "bottom", "outerwear", "footwear", "accessory", "dress", "set"];
 const TAXONOMY_FABRICS = [
   "poplin", "denim", "linen", "canvas", "corduroy", "twill", "chambray",
+  "khadi cotton", "handloom cotton",
   "ribbed knit", "jersey knit", "cable knit", "waffle knit",
   "genuine leather", "faux/PU leather", "suede",
-  "wool", "wool-blend", "silk", "satin/crepe", "velvet", "organza"
+  "fine wool", "wool-blend", "tweed", "cashmere",
+  "silk satin", "crepe de chine", "charmeuse", "georgette",
+  "organza", "chanderi silk", "chiffon", "mulmul",
+  "raw silk dupion", "banarasi brocade", "jacquard", "ikat",
+  "velvet", "chikankari", "zardozi"
 ];
+
+const TAXONOMY_CONSTRUCTIONS = [
+  "shirt_blouse", "top_t_shirt_sweatshirt", "sweater", "cardigan", "kurta",
+  "pants", "shorts", "skirt",
+  "jacket", "vest", "coat", "cape",
+  "dress", "jumpsuit", "saree", "anarkali_dress",
+  "co_ord_set", "lehenga_set", "salwar_kameez_set", "sharara_set",
+  "shoe", "bag_wallet", "belt", "scarf", "dupatta", "glasses", "hat"
+];
+
+const CONSTRUCTION_TO_CATEGORY: Record<string, string> = {
+  shirt_blouse: "top", top_t_shirt_sweatshirt: "top", sweater: "top", cardigan: "top", kurta: "top",
+  pants: "bottom", shorts: "bottom", skirt: "bottom",
+  jacket: "outerwear", vest: "outerwear", coat: "outerwear", cape: "outerwear",
+  dress: "dress", jumpsuit: "dress", saree: "dress", anarkali_dress: "dress",
+  co_ord_set: "set", lehenga_set: "set", salwar_kameez_set: "set", sharara_set: "set",
+  shoe: "footwear", bag_wallet: "accessory", belt: "accessory", scarf: "accessory", dupatta: "accessory", glasses: "accessory", hat: "accessory"
+};
 
 type MissingPiece = { role: string; find: string };
 
@@ -54,6 +77,7 @@ export type StyleCombo = {
   items_used: string[];
   directions: string;
   missing: MissingPiece[];
+  reference_images?: string[];
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -369,8 +393,109 @@ function drawHUD(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Voice intent parsing — occluded item detection gate
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Two-tier intent gate before firing /api/cv/targeted-scan.
+ *
+ * Tier 1 (REQUIRED): The transcript must contain at least one phrase that
+ * signals the user is actively pointing something out — not just speaking
+ * about fashion in general.
+ *
+ * Examples that PASS Tier 1:
+ *   "can you see the jacket behind that top"
+ *   "there's a beige trouser hiding behind the rack"
+ *   "what's that under the pile"
+ *   "show me that thing folded on the shelf"
+ *   "that kurta inside the bag"
+ *
+ * Examples that FAIL Tier 1 (no scan triggered):
+ *   "I love how denim looks in summer"
+ *   "what fabric is this shirt"
+ *   "tell me about this look"
+ *
+ * Tier 2: Extract garment noun + optional color from the transcript.
+ * Only runs if Tier 1 passed.
+ */
+function parseVoiceForOccludedIntent(
+  transcript: string,
+  currentLabels: string[],
+): { shouldScan: boolean; targetDescription: string | null } {
+
+  const t = transcript.toLowerCase().trim();
+
+  // ── Tier 1: Pointing-intent phrase patterns ──────────────────────────────
+  // These patterns signal the user is spatially referencing something in the
+  // camera frame — occluded, stacked, or only partially visible.
+  const INTENT_PATTERNS = [
+    /can you see\b/,
+    /do you see\b/,
+    /there['']?s a\b/,
+    /there is a\b/,
+    /i see a\b/,
+    /i can see\b/,
+    /what['']?s that\b/,
+    /what is that\b/,
+    /that .{2,30} (behind|under|inside|beneath|below|next to|beside|on top of)/,
+    /\b(behind|under|beneath|below|inside|folded|stacked|hidden|tucked)\b.{0,40}\b(jacket|shirt|top|jeans|trouser|pant|skirt|dress|kurta|shawl|coat|blazer|hoodie|sweater|jumper|cardigan|tee|blouse|lehenga|saree|sari|dupatta|vest|shorts|cargo|chino|suit|boot|sneaker|slipper|sandal|bag|belt|scarf)\b/,
+    /\b(show|spot|point|find)\b.{0,20}\b(item|garment|piece|thing|that|it)\b/,
+  ];
+
+  const hasIntent = INTENT_PATTERNS.some((re) => re.test(t));
+  if (!hasIntent) {
+    return { shouldScan: false, targetDescription: null };
+  }
+
+  // ── Tier 2: Garment noun + color extraction ──────────────────────────────
+  const GARMENT_NOUNS = [
+    "jacket", "blazer", "coat", "outerwear", "hoodie", "sweater", "jumper", "cardigan",
+    "shirt", "tee", "t-shirt", "blouse", "top", "kurta", "kurti",
+    "jeans", "denim", "trousers", "pants", "pant", "chinos", "cargo", "shorts", "skirt",
+    "dress", "lehenga", "sari", "saree", "dupatta", "shawl",
+    "sneakers", "boots", "sandals", "slippers", "shoes", "footwear",
+    "bag", "handbag", "clutch", "tote", "backpack",
+    "belt", "scarf", "cap", "hat", "sunglasses",
+  ];
+
+  const COLOR_WORDS = [
+    "black", "white", "grey", "gray", "navy", "blue", "red", "green", "yellow",
+    "orange", "pink", "purple", "brown", "beige", "cream", "olive", "khaki",
+    "maroon", "burgundy", "mustard", "lavender", "coral", "teal", "rust",
+    "charcoal", "indigo", "camel", "tan", "sand", "off-white", "ivory",
+  ];
+
+  // Find first garment noun in transcript
+  const foundNoun = GARMENT_NOUNS.find((noun) => t.includes(noun));
+  if (!foundNoun) {
+    return { shouldScan: false, targetDescription: null };
+  }
+
+  // Skip if this garment type is already tracked (avoid redundant scans)
+  const alreadyTracked = currentLabels.some(
+    (label) => label.toLowerCase().includes(foundNoun)
+  );
+  if (alreadyTracked) {
+    return { shouldScan: false, targetDescription: null };
+  }
+
+  // Extract color if present near the noun
+  const nounIdx = t.indexOf(foundNoun);
+  const contextWindow = t.slice(Math.max(0, nounIdx - 25), nounIdx + foundNoun.length + 15);
+  const foundColor = COLOR_WORDS.find((c) => contextWindow.includes(c));
+
+  // Build description string for the targeted scan prompt
+  const targetDescription = foundColor
+    ? `${foundColor} ${foundNoun}`
+    : foundNoun;
+
+  return { shouldScan: true, targetDescription };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Props
 // ─────────────────────────────────────────────────────────────────────────────
+
 
 interface CameraScannerProps {
   onClose: () => void;
@@ -431,6 +556,53 @@ export function CameraScanner({
     onResult: (res) => {
       if (res.transcribed_text) setUserTranscript(res.transcribed_text);
       if (res.reply) setVoiceReply(res.reply);
+
+      // ── Voice-triggered occluded item detection ──────────────────────
+      // Only fire a targeted re-scan when the transcript shows clear
+      // POINTING INTENT — not just any sentence with a garment word.
+      if (res.transcribed_text && lastCapturedB64.current) {
+        const intent = parseVoiceForOccludedIntent(
+          res.transcribed_text,
+          Array.from(trackedItemsRef.current.values()).map((i) => i.label),
+        );
+        if (intent.shouldScan && intent.targetDescription) {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+          const currentLabels = Array.from(trackedItemsRef.current.values()).map((i) => i.label);
+          fetch(`${apiUrl}/api/cv/targeted-scan`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              image_b64: lastCapturedB64.current,
+              target_description: intent.targetDescription,
+              current_labels: currentLabels,
+              user_id: userId || "default",
+            }),
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.found && data.item && data.item.bbox) {
+                const item = data.item;
+                const tid = item.track_id || `voice_${Date.now()}`;
+                const bboxCopy = { ...item.bbox };
+                trackedItemsRef.current.set(tid, {
+                  ...item,
+                  id: tid,
+                  track_id: tid,
+                  state: "new" as const,
+                  currentBbox: bboxCopy,
+                  targetBbox: { ...item.bbox },
+                  bbox: bboxCopy,
+                  opacity: 0.0,
+                  targetOpacity: 1.0,
+                  corrected: false,
+                });
+                setTrackedVersion((v) => v + 1);
+                console.log("[Voice Targeted] Injected item:", item.label);
+              }
+            })
+            .catch((e) => console.warn("[Voice Targeted] Failed:", e));
+        }
+      }
     },
     onError: (err) => {
       console.error("[CameraScanner] voice error:", err);
@@ -848,8 +1020,9 @@ export function CameraScanner({
         item.bbox.w = item.currentBbox.w;
         item.bbox.h = item.currentBbox.h;
 
-        // LERP opacity toward targetOpacity
-        item.opacity += (item.targetOpacity - item.opacity) * 0.15;
+        // LERP opacity toward targetOpacity (faster decay multiplier 0.35 for vanishing items per Phase 1 report)
+        const opacityLerp = item.targetOpacity < item.opacity ? 0.35 : 0.15;
+        item.opacity += (item.targetOpacity - item.opacity) * opacityLerp;
 
         // Remove from map once fade-out completes
         if (item.targetOpacity === 0.0 && item.opacity < 0.02) {
@@ -1389,13 +1562,34 @@ export function CameraScanner({
                 <p className="text-center font-mono text-sm text-gray-500 py-8">No combos generated.</p>
               ) : (
                 combos.map((combo) => (
-                  <div
-                    key={combo.id}
-                    className="rounded-xl bg-white/5 border border-white/10 overflow-hidden"
-                  >
+                  <div key={combo.id} className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
                     <div className="p-4 border-b border-white/8">
                       <p className="font-mono font-bold text-sm text-white tracking-wide">{combo.name}</p>
                       <p className="font-mono text-xs text-[#A855F7] mt-0.5">{combo.vibe}</p>
+
+                      {/* ── Reference images horizontal scroll ──────────── */}
+                      {combo.reference_images && combo.reference_images.length > 0 && (
+                        <div className="mt-3 -mx-1">
+                          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                            {combo.reference_images.map((url, imgIdx) => (
+                              <div
+                                key={imgIdx}
+                                className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-white/10 bg-white/5"
+                              >
+                                <img
+                                  src={url}
+                                  alt={`${combo.name} reference ${imgIdx + 1}`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).parentElement!.style.display = "none";
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="px-4 pt-3 flex flex-wrap gap-1.5">
@@ -1519,6 +1713,36 @@ export function CameraScanner({
                         }`}
                       >
                         {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Construction / Silhouette Picker */}
+              <div>
+                <label className="block font-mono text-[10px] text-gray-400 uppercase tracking-wider mb-2">
+                  Specific Silhouette / Construction
+                </label>
+                <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
+                  {TAXONOMY_CONSTRUCTIONS.map((con) => {
+                    const isSelected = editLabel.toLowerCase().includes(con);
+                    return (
+                      <button
+                        key={con}
+                        onClick={() => {
+                          setEditLabel(con);
+                          if (CONSTRUCTION_TO_CATEGORY[con]) {
+                            setEditCategory(CONSTRUCTION_TO_CATEGORY[con]);
+                          }
+                        }}
+                        className={`font-mono text-xs px-2.5 py-1 rounded-lg border transition-all ${
+                          isSelected
+                            ? "bg-[#39FF14]/20 border-[#39FF14] text-[#39FF14] font-bold shadow-[0_0_10px_rgba(57,255,20,0.2)]"
+                            : "bg-white/5 border-white/10 text-gray-300 hover:border-white/30"
+                        }`}
+                      >
+                        {con}
                       </button>
                     );
                   })}
