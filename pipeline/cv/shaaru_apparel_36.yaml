@@ -1,0 +1,50 @@
+# shaaru_apparel_36.yaml — YOLO26 Fine-Tuning Dataset Configuration
+# Configured for SHAARU's 36-class fashion & Indian ethnic wear taxonomy.
+# Compatible with Ultralytics YOLO26 / YOLOv8 format.
+
+path: ../dataset/shaaru_36  # dataset root dir
+train: images/train  # train images (relative to 'path')
+val: images/val      # val images (relative to 'path')
+test: images/test    # test images (optional)
+
+# Number of classes
+nc: 36
+
+# Class names (strictly sorted alphabetical mapping 0..35)
+names:
+  0: anarkali_dress
+  1: bag_wallet
+  2: belt
+  3: cape
+  4: cardigan
+  5: co_ord_set
+  6: coat
+  7: dress
+  8: dupatta
+  9: glasses
+  10: glove
+  11: hat
+  12: headband_hair_accessory
+  13: jacket
+  14: jumpsuit
+  15: kurta
+  16: leg_warmer
+  17: lehenga_set
+  18: pants
+  19: romper
+  20: salwar_kameez_set
+  21: saree
+  22: scarf
+  23: sharara_set
+  24: shirt_blouse
+  25: shoe
+  26: shorts
+  27: skirt
+  28: sock
+  29: sweater
+  30: tie
+  31: tights_stockings
+  32: top_t_shirt_sweatshirt
+  33: umbrella
+  34: vest
+  35: watch

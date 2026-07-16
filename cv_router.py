@@ -50,6 +50,8 @@ class CorrectionRequest(BaseModel):
     corrected: dict
     confidence: Optional[float] = 0.0
     user_id: Optional[str] = "default"
+    bbox: Optional[dict | list] = None
+    image_crop_b64: Optional[str] = None
 
 class EnrichFabricRequest(BaseModel):
     image_b64: str
@@ -471,11 +473,14 @@ async def cv_touch(request: Request):
 async def cv_correct(req: CorrectionRequest):
     """
     Log user tap-to-correct feedback for future fine-tuning/eval.
-    Writes to cv_corrections.jsonl in JSONL format.
+    Writes to cv_corrections.jsonl and MongoDB in JSONL format with bbox + image_crop_b64.
     """
     ts = datetime.now(timezone.utc).isoformat()
     try:
         import json
+        bbox_data = req.bbox or req.original.get("bbox") or req.original.get("box") or req.corrected.get("bbox")
+        crop_data = req.image_crop_b64 or req.original.get("image_crop_b64") or req.corrected.get("image_crop_b64")
+        
         log_entry = {
             "timestamp": ts,
             "track_id": req.track_id,
@@ -483,10 +488,12 @@ async def cv_correct(req: CorrectionRequest):
             "original": req.original,
             "corrected": req.corrected,
             "confidence": req.confidence,
+            "bbox": bbox_data,
+            "image_crop_b64": crop_data,
         }
         with open("cv_corrections.jsonl", "a", encoding="utf-8") as f:
             f.write(json.dumps(log_entry) + "\n")
-        log.info(f"[CV CORRECT] Logged correction for track_id={req.track_id}: {req.original} -> {req.corrected}")
+        log.info(f"[CV CORRECT] Logged correction for track_id={req.track_id}: {req.original} -> {req.corrected} (bbox={bbox_data is not None}, crop={crop_data is not None})")
         try:
             try:
                 from database import get_db

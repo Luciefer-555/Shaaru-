@@ -1059,12 +1059,14 @@ export function CameraScanner({
       label: existing.label,
       category: existing.category,
       fabric_type: existing.fabric_type || "uncertain",
+      bbox: existing.bbox || existing.currentBbox,
     };
 
     const corr = {
       label: editLabel.trim() || existing.label,
       category: editCategory,
       fabric_type: editFabric,
+      bbox: existing.bbox || existing.currentBbox,
     };
 
     existing.label = corr.label;
@@ -1075,6 +1077,33 @@ export function CameraScanner({
     setShowCorrectionSheet(false);
     setCorrectingItem(null);
     setTrackedVersion((v) => v + 1);
+
+    // Attempt to capture crop b64 from videoRef if possible
+    let imageCropB64: string | undefined = undefined;
+    try {
+      const video = videoRef.current;
+      const box = existing.bbox || existing.currentBbox;
+      if (video && box) {
+        const tempCanvas = document.createElement("canvas");
+        const ctx = tempCanvas.getContext("2d");
+        if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
+          const w = video.videoWidth;
+          const h = video.videoHeight;
+          const xMin = Math.max(0, Math.floor((box.x_min ?? 0) * w));
+          const yMin = Math.max(0, Math.floor((box.y_min ?? 0) * h));
+          const xMax = Math.min(w, Math.ceil((box.x_max ?? 1) * w));
+          const yMax = Math.min(h, Math.ceil((box.y_max ?? 1) * h));
+          const cropW = Math.max(1, xMax - xMin);
+          const cropH = Math.max(1, yMax - yMin);
+          tempCanvas.width = cropW;
+          tempCanvas.height = cropH;
+          ctx.drawImage(video, xMin, yMin, cropW, cropH, 0, 0, cropW, cropH);
+          imageCropB64 = tempCanvas.toDataURL("image/jpeg", 0.85);
+        }
+      }
+    } catch (cropErr) {
+      console.warn("[Correction] Crop capture failed:", cropErr);
+    }
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1087,6 +1116,8 @@ export function CameraScanner({
           corrected: corr,
           confidence: existing.confidence ?? 0.0,
           user_id: userId || "default",
+          bbox: existing.bbox || existing.currentBbox,
+          image_crop_b64: imageCropB64,
         }),
       });
     } catch (err) {

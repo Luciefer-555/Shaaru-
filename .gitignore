@@ -16,5 +16,6 @@ node_modules/
 *.safetensors
 _flat_dump/ 
 _ f l a t _ d u m p /  
- g c l o u d . z i p  
 logs/
+runs/
+dataset/
