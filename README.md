@@ -52,6 +52,16 @@ Known limitation, tracked openly: RF-DETR trouser/pants detection is a genuine t
 
 Backend is fully verified end-to-end (30+ message test suite passing). Active work is closing the CV accuracy gap (pants/trouser detection) before moving to GPU-hosted inference infrastructure.
 
+
+
+## Research
+
+This CV pipeline's architecture — decoupling real-time detection from fine-grained VLM classification — is documented in a co-authored research paper, evaluated on a controlled before/after comparison: a single-stage fine-grained detector (44 categories, 512 hand-labeled images) achieved only 21.3% mAP@50, while restructuring to a hybrid RF-DETR detector + VLM classification pipeline — holding the dataset and class structure constant — improved detection to 73.6% mAP@50, with precision, recall, and F1 of 66.5%, 72.2%, and 65.6%. https://drive.google.com/file/d/1tPqSt67PpSU5ut_2ntOXdhhTud5iTiGf/view?usp=drive_link
+
+Note: this mAP@50 figure measures the detector's localization performance specifically, distinct from the type/color/pattern classification accuracy reported above — the two evaluate different stages of the same decoupled pipeline.
+
+
+
 ---
 
 *Built and maintained solo. Architecture decisions, prompt engineering, and CV pipeline design are original work; NVIDIA NIM is used as the hosted inference layer.*
